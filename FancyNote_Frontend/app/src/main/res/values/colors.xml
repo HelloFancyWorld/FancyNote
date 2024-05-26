@@ -5,7 +5,7 @@
     <color name="colorAccent">#FF4081</color>
 
     <color name="white">#ffffff</color>
-
+    <color name="gold">#FFD700</color>
     <!--分割线的颜色-->
     <color name="divider_color">#08000000</color>
 

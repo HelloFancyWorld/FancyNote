@@ -9,6 +9,13 @@ from django.contrib.auth.models import User
 import json
 from django.middleware.csrf import get_token, rotate_token
 from django.views.decorators.csrf import csrf_exempt
+from .serializers import UserNoteSerializer
+from .models import User_note
+
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 
 from api.models import User_info
 
@@ -43,7 +50,7 @@ def log_in(request):
                     'success': True,
                     'username': user.username,
                     'email': user.email,
-                    'avatar': user.user_info.avatar.url,
+                    'avatar_url': (user.user_info.avatar.url if user.user_info.avatar else None),
                     'motto': user.user_info.motto
                 }, status=200)
                 return response
@@ -54,6 +61,7 @@ def log_in(request):
     return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)
 
 
+@login_required
 def log_out(request):
     if request.method == 'POST':
         try:
@@ -104,3 +112,17 @@ def change_avatar(request):
         except Exception as e:
             return JsonResponse({'message': f'An error occurred: {str(e)}', 'success': False}, status=500)
     return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)
+
+
+class UserNoteViewSet(viewsets.ModelViewSet):
+    queryset = User_note.objects.all()
+    serializer_class = UserNoteSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 手动设置'user'字段为当前请求的用户
+        serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        # 过滤查询集以仅包含当前请求用户的笔记
+        return User_note.objects.filter(user=self.request.user)

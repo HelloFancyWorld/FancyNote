@@ -17,6 +17,10 @@ import com.example.myapplication.network.CsrfTokenResponse;
 import com.example.myapplication.network.LoginRequest;
 import com.example.myapplication.network.LoginResponse;
 
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -65,7 +69,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onResponse(Call<CsrfTokenResponse> call, Response<CsrfTokenResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     String csrfToken = response.body().getCsrfToken();
-                    String cookie = response.headers().get("Set-Cookie");
+                    String cookie = extractCookieFromHeaders(response.headers().values("Set-Cookie"));
                     saveCsrfTokenAndCookieToStorage(csrfToken, cookie);
                     ApiService updatedApiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
                     loginUser(updatedApiService);
@@ -110,6 +114,9 @@ public class LoginActivity extends AppCompatActivity {
                 isRequestInProgress = false;
                 if (response.isSuccessful() && response.body() != null) {
                     LoginResponse loginResponse = response.body();
+                    String newCookie = extractCookieFromHeaders(response.headers().values("Set-Cookie"));
+                    String newCsrfToken = extractCsrfTokenFromCookie(newCookie);
+                    saveCsrfTokenAndCookieToStorage(newCsrfToken, newCookie);
                     if (loginResponse.isSuccess()) {
                         sharedPreferences.edit().putBoolean("isLoggedIn", true).apply();    // 保存登录状态
                         Toast.makeText(LoginActivity.this, "Login successful", Toast.LENGTH_SHORT).show();
@@ -146,5 +153,31 @@ public class LoginActivity extends AppCompatActivity {
         editor.putString("csrf_token", csrfToken);
         editor.putString("cookie", cookie);
         editor.apply();
+    }
+
+    private void saveCookieToStorage(String cookie) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("cookie", cookie);
+        editor.apply();
+    }
+
+    private String extractCookieFromHeaders(List<String> cookies) {
+        // 提取并返回所有Set-Cookie头部的值，通常用于会话cookie（例如sessionid）
+        StringBuilder cookieBuilder = new StringBuilder();
+        for (String cookie : cookies) {
+            if (cookieBuilder.length() > 0) {
+                cookieBuilder.append("; ");
+            }
+            cookieBuilder.append(cookie.split(";", 2)[0]);
+        }
+        return cookieBuilder.toString();
+    }
+    private String extractCsrfTokenFromCookie(String cookie) {
+        Pattern pattern = Pattern.compile("csrftoken=([^;]+)");
+        Matcher matcher = pattern.matcher(cookie);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_view_avatar"
+        android:title="查看大图"/>
+    <item
+        android:id="@+id/action_change_avatar"
+        android:title="修改头像"/>
+</menu>

@@ -24,4 +24,36 @@ class User_info(models.Model):
 
 
 class User_note(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Content(models.Model):
+    note = models.ForeignKey(
+        User_note, related_name='contents', on_delete=models.CASCADE)
+    order = models.IntegerField()
+    content_type = models.CharField(max_length=50)
+
+    class Meta:
+        ordering = ['order']
+
+
+class TextContent(models.Model):
+    content = models.OneToOneField(
+        Content, related_name='text_content', on_delete=models.CASCADE)
+    text = models.TextField()
+
+
+class ImageContent(models.Model):
+    content = models.OneToOneField(
+        Content, related_name='image_content', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='images/')
+
+
+class AudioContent(models.Model):
+    content = models.OneToOneField(
+        Content, related_name='audio_content', on_delete=models.CASCADE)
+    audio = models.FileField(upload_to='audio/')

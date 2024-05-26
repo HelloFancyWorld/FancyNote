@@ -1,12 +1,18 @@
 package com.example.myapplication;
 
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -21,6 +27,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -39,18 +46,25 @@ import com.example.myapplication.network.ApiClient;
 import com.example.myapplication.network.ApiService;
 import com.example.myapplication.network.LogoutResponse;
 import com.example.myapplication.network.SignupResponse;
+import com.example.myapplication.network.UploadAvatarResponse;
 import com.example.myapplication.ui.theme.CircleWithBorderTransformation;
 import com.google.android.material.navigation.NavigationView;
+import com.yalantis.ucrop.util.FileUtils;
 
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import okhttp3.MediaType;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends BaseActivity {
 
+    private static final String BASE_URL = "http://10.0.2.2:8000/";
     private Toolbar toolbar;
     private TextView tv_add,tv_list,tv_title;//右上角的添加
     private RecyclerView rcvNoteList;//备忘列表
@@ -73,6 +87,11 @@ public class MainActivity extends BaseActivity {
     private String avatarUrl;
     private String motto;
 
+
+    // 用于头像选择
+    private ActivityResultLauncher<String> pickImageLauncher;
+    private Uri selectedImageUri;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,7 +106,7 @@ public class MainActivity extends BaseActivity {
 
         username = sharedPreferences.getString("username", null);
         email = sharedPreferences.getString("email", null);
-        avatarUrl = sharedPreferences.getString("avatar", "R.drawable.default_avatar");
+        avatarUrl = sharedPreferences.getString("avatar", null);
         motto = sharedPreferences.getString("motto", null);
 
         if (isLoggedIn) {
@@ -119,16 +138,46 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initLoggedViews() {
+        // Initialize the image picker launcher
+        pickImageLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                selectedImageUri = uri;
+                uploadAvatar(uri);
+            }
+        });
+        user_info_avatar = findViewById(R.id.user_info_avatar);
+        user_info_avatar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showAvatarMenu(view);
+            }
+        });
+
         user_info_username = findViewById(R.id.user_info_username);
         user_info_username.setText(username);
 
         user_info_motto = findViewById(R.id.user_info_motto);
         user_info_motto.setText(motto);
-        user_info_motto.setVisibility(View.VISIBLE);
+
+        LinearLayout user_info_motto_layout = findViewById(R.id.user_info_motto_layout);
+        user_info_motto_layout.setVisibility(View.VISIBLE);
 
         user_info_email = findViewById(R.id.user_info_email);
         user_info_email.setText(email);
-        user_info_email.setVisibility(View.VISIBLE);
+
+        LinearLayout user_info_email_layout = findViewById(R.id.user_info_email_layout);
+        user_info_email_layout.setVisibility(View.VISIBLE);
+
+        LinearLayout user_info_logged_buttons = findViewById(R.id.user_info_logged_buttons);
+        user_info_logged_buttons.setVisibility(View.VISIBLE);
+
+        Button edit_button = findViewById(R.id.edit_button);
+        edit_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                editUserInfo();
+            }
+        });
 
         logout_button = findViewById(R.id.logout_button);
         logout_button.setOnClickListener(new View.OnClickListener() {
@@ -136,55 +185,55 @@ public class MainActivity extends BaseActivity {
             public void onClick(View view) {
                 logoutUser();
             }
+        });
+    }
 
-            private void logoutUser() {
-                String csrfToken = sharedPreferences.getString("csrf_token", null);
-                String cookie = sharedPreferences.getString("cookie", null);
-                ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
-                apiService.logout().enqueue(new Callback<LogoutResponse>() {
-                    @Override
-                    public void onResponse(Call<LogoutResponse> call, Response<LogoutResponse> response) {
-                        if (response.isSuccessful()) {
-                            LogoutResponse logoutResponse = response.body();
-                            if (logoutResponse.isSuccess()) {
-                                // 清除保存的登录状态和用户信息
-                                sharedPreferences.edit().remove("isLoggedIn").apply();
-                                sharedPreferences.edit().remove("username").apply();
-                                sharedPreferences.edit().remove("email").apply();
-                                sharedPreferences.edit().remove("avatar").apply();
-                                sharedPreferences.edit().remove("motto").apply();
+    private void editUserInfo() {}
+    private void logoutUser() {
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+        apiService.logout().enqueue(new Callback<LogoutResponse>() {
+            @Override
+            public void onResponse(Call<LogoutResponse> call, Response<LogoutResponse> response) {
+                if (response.isSuccessful()) {
+                    LogoutResponse logoutResponse = response.body();
+                    if (logoutResponse.isSuccess()) {
+                        // 清除保存的登录状态和用户信息
+                        sharedPreferences.edit().remove("isLoggedIn").apply();
+                        sharedPreferences.edit().remove("username").apply();
+                        sharedPreferences.edit().remove("email").apply();
+                        sharedPreferences.edit().remove("avatar").apply();
+                        sharedPreferences.edit().remove("motto").apply();
 
-                                Toast.makeText(MainActivity.this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Logged out successfully", Toast.LENGTH_SHORT).show();
 
-                                // 刷新页面
-                                Intent intent = new Intent(MainActivity.this, MainActivity.class);
-                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                                startActivity(intent);
-                                finish();
-                            }
-                            else {
-                                Toast.makeText(MainActivity.this, logoutResponse.getMessage(), Toast.LENGTH_SHORT).show();
-                            }
-                        } else {
-                            Toast.makeText(MainActivity.this, "Logout failed", Toast.LENGTH_SHORT).show();
-                        }
+                        // 刷新页面
+                        Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        finish();
                     }
-
-                    @Override
-                    public void onFailure(Call<LogoutResponse> call, Throwable t) {
-                        Toast.makeText(MainActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    else {
+                        Toast.makeText(MainActivity.this, logoutResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
-                });
+                } else {
+                    Toast.makeText(MainActivity.this, "Logout failed", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<LogoutResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-
-
-        logout_button.setVisibility(View.VISIBLE);
-
     }
     private void initNotLoggedViews() {
         user_info_username = findViewById(R.id.user_info_username);
         user_info_username.setText("未登录");
+
+        LinearLayout user_info_notlogged_buttons = findViewById(R.id.user_info_notlogged_buttons);
+        user_info_notlogged_buttons.setVisibility(View.VISIBLE);
 
         signup_button = findViewById(R.id.signup_button);
         signup_button.setOnClickListener(new View.OnClickListener() {
@@ -195,7 +244,8 @@ public class MainActivity extends BaseActivity {
                 startActivity(intent);
             }
         });
-        signup_button.setVisibility(View.VISIBLE);
+
+
         login_button = findViewById(R.id.login_button);
         login_button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -205,7 +255,6 @@ public class MainActivity extends BaseActivity {
                 startActivity(intent);
             }
         });
-        login_button.setVisibility(View.VISIBLE);
     }
     private void initCommonViews() {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -220,10 +269,7 @@ public class MainActivity extends BaseActivity {
         float borderWidth = 2f; // 边框宽度，单位是像素
 
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            Glide.with(this)
-                    .load(avatarUrl)
-                    .apply(new RequestOptions().transform(new CircleWithBorderTransformation(borderColor, borderWidth)))
-                    .into(iv_avatar);
+            loadImageWithGlide(avatarUrl, iv_avatar);
         } else {
             Glide.with(this)
                     .load(R.drawable.default_avatar)
@@ -239,10 +285,14 @@ public class MainActivity extends BaseActivity {
         });
 
         user_info_avatar = findViewById(R.id.user_info_avatar);
-        Glide.with(this)
-                .load(R.drawable.fcy)
-                .apply(new RequestOptions().transform(new CircleWithBorderTransformation(borderColor, borderWidth)))
-                .into(user_info_avatar);
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            loadImageWithGlide(avatarUrl, user_info_avatar);
+        } else {
+            Glide.with(this)
+                    .load(R.drawable.default_avatar)
+                    .apply(new RequestOptions().transform(new CircleWithBorderTransformation(borderColor, borderWidth)))
+                    .into(user_info_avatar);
+        }
 
         searchView = findViewById(R.id.tv_search);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -291,6 +341,87 @@ public class MainActivity extends BaseActivity {
             query_current_type_Notes(Tag);
             drawer.closeDrawer(GravityCompat.START);
             return true;
+        });
+    }
+
+    private void showAvatarMenu(View view) {
+        PopupMenu popupMenu = new PopupMenu(this, view);
+        popupMenu.getMenuInflater().inflate(R.menu.avatar_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.action_view_avatar) {
+                viewAvatar();
+                return true;
+            } else if (id == R.id.action_change_avatar) {
+                changeAvatar();
+                return true;
+            }
+            return false;
+        });
+        popupMenu.show();
+    }
+
+    private void viewAvatar() {
+        Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+        dialog.setContentView(R.layout.dialog_view_avatar);
+
+        ImageView ivAvatar = dialog.findViewById(R.id.ivAvatar);
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            loadImageWithGlide(avatarUrl, ivAvatar);
+        } else {
+            ivAvatar.setImageResource(R.drawable.default_avatar);
+        }
+
+        // 点击即关闭Dialog
+        View root = dialog.findViewById(R.id.view_avatar);
+        root.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+
+    private void changeAvatar() {
+        pickImageLauncher.launch("image/*");
+    }
+
+    private void uploadAvatar(Uri uri) {
+        // Show a loading dialog or some UI indication
+
+        // Assuming you have an ApiService and ApiClient similar to your logout functionality
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+
+        // Create a file from the Uri
+        File file = new File(FileUtils.getPath(this, uri));
+        MediaType mediaType = MediaType.parse(getContentResolver().getType(uri));
+        RequestBody requestFile = RequestBody.create(file, mediaType);
+        MultipartBody.Part body = MultipartBody.Part.createFormData("avatar", file.getName(), requestFile);
+
+        apiService.uploadAvatar(body).enqueue(new Callback<UploadAvatarResponse>() {
+            @Override
+            public void onResponse(Call<UploadAvatarResponse> call, Response<UploadAvatarResponse> response) {
+                if (response.isSuccessful()) {
+                    UploadAvatarResponse uploadResponse = response.body();
+                    if (uploadResponse.isSuccess()) {
+                        avatarUrl = uploadResponse.getAvatarUrl();
+                        sharedPreferences.edit().putString("avatar", avatarUrl).apply();
+                        loadImageWithGlide(avatarUrl, user_info_avatar);
+                        Toast.makeText(MainActivity.this, "头像上传成功", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "头像上传失败: " + uploadResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "头像上传失败", Toast.LENGTH_SHORT).show();
+                }
+                // Hide loading dialog or UI indication
+            }
+
+            @Override
+            public void onFailure(Call<UploadAvatarResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                // Hide loading dialog or UI indication
+            }
         });
     }
 
@@ -454,5 +585,16 @@ public class MainActivity extends BaseActivity {
         layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT;
         layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT;
         window.setAttributes(layoutParams);
+    }
+
+    // 后端返回的是相对 URL
+    private void loadImageWithGlide(String relativeUrl, ImageView imageView) {
+        // 构建完整的 URL
+        String fullUrl = BASE_URL + relativeUrl;
+
+        Glide.with(this)
+                .load(fullUrl)
+                .apply(new RequestOptions().transform(new CircleWithBorderTransformation(0xFFFFD700, 2f)))
+                .into(imageView);
     }
 }
