@@ -2,7 +2,7 @@ package com.example.myapplication.network;
 
 import java.util.List;
 
-private class Note {
+class Note {
     private String title;
     private List<TextContent> textcontent_set;
     private List<ImageContent> imagecontent_set;
@@ -11,14 +11,14 @@ private class Note {
     // getters and setters
 }
 
-private class TextContent {
+class TextContent {
     private int order;
     private String text;
 
     // getters and setters
 }
 
-private class ImageContent {
+class ImageContent {
     private int order;
     private String image;
 
