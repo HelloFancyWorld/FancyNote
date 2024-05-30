@@ -1,11 +1,13 @@
 package com.example.myapplication;
 import java.io.Serializable;
+import java.util.ArrayList;
+
 public class Note implements Serializable {
 
     private int id;
 
     private String title;
-    private String content;
+    private ArrayList<Item> content;
     private String time;
     private String imagePath;
     private String audioPath;
@@ -28,11 +30,11 @@ public class Note implements Serializable {
         this.title = title;
     }
 
-    public String getContent() {
+    public ArrayList<Item> getContent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setContent(ArrayList<Item> content) {
         this.content = content;
     }
 
@@ -43,23 +45,10 @@ public class Note implements Serializable {
     public void setTime(String time) {
         this.time = time;
     }
-    public String getImagePath() {
-        return imagePath;
-    }
-    public String getAudioPath() {
-        return audioPath;
-    }
-
     public String getTag() {
         return tag;
     }
 
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-    public void setAudioPath(String audioPath) {
-        this.audioPath = audioPath;
-    }
     public void setTag(String tag) {
         this.tag = tag;
     }

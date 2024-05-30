@@ -24,42 +24,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/llBottom"
-        android:layout_below="@+id/toolbar">
+        android:layout_below="@+id/toolbar"
+        android:id="@+id/scroll">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:id="@+id/linearLayout">
 
-            <GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                android:id="@+id/ivContent"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:numColumns="auto_fit"
-                android:columnWidth="90dp"
-                android:horizontalSpacing="10dp"
-                android:verticalSpacing="10dp"
-                android:gravity="center"
-                android:stretchMode="columnWidth" />
-
-            <EditText
-                android:id="@+id/tvTitle"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@null"
-                android:gravity="top"
-                android:padding="16dp" />
-            <EditText
-                android:id="@+id/tvContent"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@null"
-                android:gravity="top"
-                android:padding="16dp" />
-            <androidx.media3.ui.PlayerView
-                android:id="@+id/player_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
         </LinearLayout>
     </ScrollView>
 
