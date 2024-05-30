@@ -161,7 +161,6 @@ public class AddNoteActivity extends BaseActivity {
                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                 traverseViews(containerLayout);
-                int order=0;
                 String content = etContent.getText().toString().trim();
                 if (title.length() <= 0 || itemList.isEmpty()) {
                     Toast.makeText(getApplicationContext(), "请输入内容", Toast.LENGTH_SHORT).show();
