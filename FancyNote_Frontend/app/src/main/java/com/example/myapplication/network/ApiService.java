@@ -28,6 +28,6 @@ public interface ApiService {
     @POST("/api/change_avatar/")
     Call<UploadAvatarResponse> uploadAvatar(@Part MultipartBody.Part avatar);
 
-    @POST("notes/")
-    Call<NoteResponse> createNote(@Body Note note);
+    @POST("/api/update_user_info/")
+    Call<UpdateInfoResponse> updateUserInfo(@Body UpdateInfoRequest request);
 }

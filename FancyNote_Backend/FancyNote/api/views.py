@@ -126,3 +126,23 @@ class UserNoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # 过滤查询集以仅包含当前请求用户的笔记
         return User_note.objects.filter(user=self.request.user)
+
+
+@login_required
+def edit_info(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user = request.user
+            user_info = user.user_info
+            user_info.nickname = data.get('nickname', user_info.nickname)
+            user_info.motto = data.get('motto', user_info.motto)
+            user_info.save()
+
+            user.email = data.get('email', user.email)
+            user.save()
+
+            return JsonResponse({'message': 'User info updated successfully', 'success': True}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({'message': 'Invalid JSON', 'success': False}, status=400)
+    return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)

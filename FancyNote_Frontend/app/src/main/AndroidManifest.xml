@@ -42,6 +42,10 @@
             android:name=".LoginActivity"
             android:screenOrientation="portrait">
         </activity>
+        <activity
+            android:name=".EditInfoActivity"
+            android:screenOrientation="portrait">
+        </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.zhihu.matisse.sample.fileprovider"

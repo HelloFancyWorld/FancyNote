@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".EditInfoActivity">
+
+    <!-- Username Section -->
+    <TextView
+        android:id="@+id/tv_nickname_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="昵称"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/et_nickname"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="请输入昵称（2-10字）"
+        android:inputType="textPersonName" />
+
+    <!-- Email Section -->
+    <TextView
+        android:id="@+id/tv_email_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="邮箱"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/et_email"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="输入邮箱"
+        android:inputType="textEmailAddress" />
+
+    <!-- Motto Section -->
+    <TextView
+        android:id="@+id/tv_motto_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="签名"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp"/>
+
+    <EditText
+        android:id="@+id/et_motto"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="请输入签名（5-30字）"
+        android:inputType="textMultiLine"
+        android:minLines="3"
+        android:gravity="top" />
+
+    <!-- Buttons Section -->
+    <LinearLayout
+        android:id="@+id/buttons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="32dp">
+
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="保存"/>
+
+        <Button
+            android:id="@+id/btn_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="32dp"
+            android:text="取消"/>
+    </LinearLayout>
+
+</LinearLayout>

@@ -31,7 +31,7 @@ class ContentInline(admin.StackedInline):
         return None
 
     readonly_fields = ['content_display']
-    fields = ['order', 'content_type', 'content_display']
+    fields = ['id', 'order', 'content_type', 'content_display']
     verbose_name_plural = 'Contents'
 
 

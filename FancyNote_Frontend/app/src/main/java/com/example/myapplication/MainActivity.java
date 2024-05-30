@@ -77,7 +77,7 @@ public class MainActivity extends BaseActivity {
     private ImageView iv_avatar;
     private ImageView user_info_avatar;
     private NavigationView user_info;
-    private Button signup_button, login_button, logout_button;
+    private Button signup_button, login_button, logout_button, editinfo_button;
     private TextView user_info_username, user_info_motto, user_info_email;
     private SharedPreferences sharedPreferences;
     private List<Note> noteList = new ArrayList<>();
@@ -184,6 +184,15 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onClick(View view) {
                 logoutUser();
+            }
+        });
+
+        editinfo_button = findViewById(R.id.edit_button);
+        editinfo_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, EditInfoActivity.class);
+                startActivity(intent);
             }
         });
     }

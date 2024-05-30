@@ -17,9 +17,12 @@ def user_avatar_path(instance, filename):
 
 class User_info(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    nickname = models.CharField(
+        max_length=30, default='', blank=True, null=True)
     avatar = models.ImageField(
-        upload_to=user_avatar_path, max_length=100, blank=True, null=True,)
-    motto = models.CharField(max_length=100, default='这个人很懒，什么都没有留下')
+        upload_to=user_avatar_path, max_length=100, blank=True, null=True)
+    motto = models.CharField(
+        max_length=100, default='这个人很懒，什么都没有留下', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

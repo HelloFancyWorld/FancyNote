@@ -96,28 +96,28 @@ public class RegisterActivity extends AppCompatActivity {
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
         if (TextUtils.isEmpty(email) || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            emailEditText.setError("Invalid email");
+            emailEditText.setError("邮箱格式不合法");
             emailEditText.requestFocus();
             isRequestInProgress = false;
             return;
         }
 
         if (TextUtils.isEmpty(username)) {
-            usernameEditText.setError("Username required");
+            usernameEditText.setError("需要用户名");
             usernameEditText.requestFocus();
             isRequestInProgress = false;
             return;
         }
 
         if (TextUtils.isEmpty(password)) {
-            passwordEditText.setError("Password required");
+            passwordEditText.setError("需要密码");
             passwordEditText.requestFocus();
             isRequestInProgress = false;
             return;
         }
 
         if (TextUtils.isEmpty(confirmPassword) || !password.equals(confirmPassword)) {
-            confirmPasswordEditText.setError("Passwords do not match");
+            confirmPasswordEditText.setError("密码不匹配");
             confirmPasswordEditText.requestFocus();
             isRequestInProgress = false;
             return;
