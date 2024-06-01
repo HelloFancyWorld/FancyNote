@@ -309,7 +309,7 @@ public class MainActivity extends BaseActivity {
             public boolean onQueryTextSubmit(String query) {
                 // 用户提交查询时调用
                 Log.i(TAG, "onCreate: " + query);
-                searchNotes(query);
+                //searchNotes(query);
                 return true;
             }
 
@@ -461,10 +461,7 @@ public class MainActivity extends BaseActivity {
             Note note = new Note();
             note.setId(id);
             note.setTitle(title);
-            note.setContent(content);
             note.setTime(time);
-            note.setImagePath(imagePath);
-            note.setAudioPath(audioPath);
             note.setTag(tag);
             noteList.add(note);
         }
@@ -485,10 +482,7 @@ public class MainActivity extends BaseActivity {
                 Note note = new Note();
                 note.setId(id);
                 note.setTitle(title);
-                note.setContent(content);
                 note.setTime(time);
-                note.setImagePath(imagePath);
-                note.setAudioPath(audioPath);
                 note.setTag(tag);
                 noteList.add(note);
             }
@@ -502,24 +496,26 @@ public class MainActivity extends BaseActivity {
         //添加分隔线
         rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
     }
-    private void searchNotes(String text) {
-        // 假设你使用Room数据库
-        List<Note> tmpList = new ArrayList<>();
-        for(int i=0;i<noteList.size();i++) {
-                String content = noteList.get(i).getContent();
-                if (content.contains(text)) {
-                    Note note = noteList.get(i);
-                    tmpList.add(note);
-                }
-        }
-        mAdapter = new NoteListAdapter(this, tmpList);
-        LinearLayoutManager manager = new LinearLayoutManager(this);
-        manager.setOrientation(LinearLayoutManager.VERTICAL);
-        rcvNoteList.setLayoutManager(manager);
-        rcvNoteList.setAdapter(mAdapter);
-        //添加分隔线
-        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
-    }
+//    private void searchNotes(String text) {
+//        // 假设你使用Room数据库
+//        List<Note> tmpList = new ArrayList<>();
+//        for(int i=0;i<noteList.size();i++) {
+//                String content = noteList.get(i).getContent();
+//                if (content.contains(text)) {
+//                    Note note = noteList.get(i);
+//                    tmpList.add(note);
+//                }
+//        }
+//        mAdapter = new NoteListAdapter(this, tmpList);
+//        LinearLayoutManager manager = new LinearLayoutManager(this);
+//        manager.setOrientation(LinearLayoutManager.VERTICAL);
+//        rcvNoteList.setLayoutManager(manager);
+//        rcvNoteList.setAdapter(mAdapter);
+//        //添加分隔线
+//        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
+//    }
+
+
 
     @Override
     public void onClick(View v) {

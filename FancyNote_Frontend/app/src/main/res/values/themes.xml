@@ -18,9 +18,9 @@
 
     <!--    <style name="DialogBottomStyle" parent="android:Animation">-->
     <!--        //进入时的动画-->
-    <!--        <item name="@android:windowEnterAnimation">@anim/push_top_in</item>-->
+    <!--        <noteItem name="@android:windowEnterAnimation">@anim/push_top_in</noteItem>-->
     <!--        //退出时的动画-->
-    <!--        <item name="@android:windowExitAnimation">@anim/push_top_out</item>-->
+    <!--        <noteItem name="@android:windowExitAnimation">@anim/push_top_out</noteItem>-->
     <!--    </style>-->
 
     <style name="add_new_note_menu">
