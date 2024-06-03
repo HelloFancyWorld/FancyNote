@@ -25,13 +25,13 @@ class ContentInline(admin.StackedInline):
         if obj.text_content:
             return obj.text_content.text
         elif obj.image_content:
-            return obj.image_content.image.url
+            return obj.image_content.local_path
         elif obj.audio_content:
-            return obj.audio_content.audio.url
+            return obj.audio_content.local_path
         return None
 
     readonly_fields = ['content_display']
-    fields = ['id', 'order', 'content_type', 'content_display']
+    fields = ['id', 'type', 'content_display']
     verbose_name_plural = 'Contents'
 
 
@@ -42,3 +42,5 @@ class UserNoteAdmin(admin.ModelAdmin):
 
 
 admin.site.register(User_info)
+
+admin.site.register(ImageContent)

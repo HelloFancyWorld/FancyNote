@@ -79,7 +79,7 @@ WSGI_APPLICATION = 'FancyNote.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'FancyNote',
+        'NAME': 'fancyNote',
         'USER': 'root',
         'PASSWORD': 'fancy',
         'HOST': 'localhost',

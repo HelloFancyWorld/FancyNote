@@ -66,7 +66,7 @@ public class MainActivity extends BaseActivity {
 
     private static final String BASE_URL = "http://10.0.2.2:8000/";
     private Toolbar toolbar;
-    private TextView tv_add,tv_list,tv_title;//右上角的添加
+    private TextView tv_add,tv_list;//右上角的添加
     private RecyclerView rcvNoteList;//备忘列表
     private DrawerLayout drawer;
     public int Tag=0;
@@ -134,7 +134,6 @@ public class MainActivity extends BaseActivity {
         rcvNoteList.setAdapter(mAdapter);
         //添加分隔线
         rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
-        tv_title.setText("我的简介");
     }
 
     private void initLoggedViews() {
@@ -269,7 +268,6 @@ public class MainActivity extends BaseActivity {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         tv_add = (TextView) findViewById(R.id.tv_add);
         tv_list=(TextView)findViewById(R.id.tv_list);
-        tv_title=(TextView)findViewById(R.id.tv_title);
         drawer = findViewById(R.id.drawer_layout);
 
         user_info = findViewById(R.id.user_info);
@@ -335,17 +333,14 @@ public class MainActivity extends BaseActivity {
 
             if (id == R.id.nav_first) {
                 Tag=1;
-                tv_title.setText("学习笔记");
                 // 处理第一个菜单项的点击
             } else if (id == R.id.nav_second) {
                 // 处理第二个菜单项的点击
                 Tag=2;
-                tv_title.setText("工作笔记");
             }
             else if (id == R.id.nav_third) {
                 // 处理第二个菜单项的点击
                 Tag=3;
-                tv_title.setText("生活笔记");
             }
             query_current_type_Notes(Tag);
             drawer.closeDrawer(GravityCompat.START);

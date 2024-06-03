@@ -41,7 +41,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
     private ArrayList<NoteItem> noteItemList;
     private TextView tvEdite,tvDelete,tvChange, tvReturn;//取消,保存\
     List<String> imageList = new ArrayList<>();
-    List<String> mediaList = new ArrayList<>();
+    List<String> audioList = new ArrayList<>();
     //private TextView tvPlay, tvPause;//播放,暂停
     private GridLayout ivContent;//图片内容
     // private VideoView vvContent;
@@ -65,23 +65,6 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         initViews();
         setDataToView();
         scrollView = findViewById(R.id.scroll);
-        scrollView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    // 获取点击位置
-                    float x = event.getX();
-                    float y = event.getY();
-
-                    // 添加新的 EditText
-                    if (!isViewAtPosition(x, y)) {
-                        addEditText(x, y);
-                    }
-                    return true;
-                }
-                return false;
-            }
-        });
     }
 
     private void initViews() {
@@ -137,7 +120,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                         LinearLayout.LayoutParams.WRAP_CONTENT
                 );
                 editText.setLayoutParams(layoutParams);
-                editText.setText(noteItem.getContent());
+                editText.setText(noteItem.getcontent());
 
                 // 设置一些属性（可选）
 
@@ -148,8 +131,8 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
             else if(noteItem.getType()==TYPE_IMAGE){
                 ImageView imageView=new ImageView(this);;
                 imageView.setVisibility(View.VISIBLE);
-                imageList.add(noteItem.getContent());
-                Uri uri = Uri.parse(noteItem.getContent());
+                imageList.add(noteItem.getcontent());
+                Uri uri = Uri.parse(noteItem.getcontent());
                 imageView.setImageURI(uri);
                 tvContent.addView(imageView);
             }
@@ -159,15 +142,15 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                     playerView.setPlayer(player);
 
                     // 设置要播放的媒体
-                    mediaList.add(noteItem.getContent());
-                    Uri uri = Uri.parse(noteItem.getContent());
+                    audioList.add(noteItem.getcontent());
+                    Uri uri = Uri.parse(noteItem.getcontent());
                     MediaItem mediaItem = MediaItem.fromUri(uri);
                     player.setMediaItem(mediaItem);
                     //mediaPlayer.prepareAsync();
                     player.prepare();
                     player.play();
                 } catch (Exception e) {
-                    Toast.makeText(getBaseContext(), e.toString(), 0).show();
+                    Toast.makeText(getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -260,33 +243,20 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         return mGesture.onTouchEvent(event);
     }
     private void traverseViews(ViewGroup parent) {
+        int audio_index = 0;
+        int image_index = 0;
         for (int i = 0; i < parent.getChildCount(); i++) {
             View child = parent.getChildAt(i);
-            int order=0;
-            int j=0;
-            int k=0;
-            // 处理子组件
             if (child instanceof PlayerView) {
-                noteItemList.add(new NoteItem(order, "Media", mediaList.get(k)));
-                k++;
-                order++;
-                // 处理 TextView
+                noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, audioList.get(audio_index)));
+                audio_index++;
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
-                if(editText.getText().toString().trim()!=null){
-                    noteItemList.add(new NoteItem(order, "Text", editText.getText().toString().trim()));
-                    order++;
-                }
-                // 处理 EditText
-                System.out.println("EditText hint: " + editText.getHint());
+                String text = editText.getText().toString().trim();
+                noteItemList.add(new NoteItem(NoteItem.TYPE_TEXT, text));
             } else if (child instanceof ImageView) {
-                noteItemList.add(new NoteItem(order, "Image", imageList.get(j)));
-                j++;
-                order++;
-                // 处理 Button
-            } else if (child instanceof ViewGroup) {
-                // 如果是 ViewGroup，递归遍历其子组件
-                traverseViews((ViewGroup) child);
+                noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, imageList.get(image_index)));
+                image_index++;
             }
         }
     }

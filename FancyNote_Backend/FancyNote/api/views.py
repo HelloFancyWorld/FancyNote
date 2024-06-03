@@ -9,15 +9,21 @@ from django.contrib.auth.models import User
 import json
 from django.middleware.csrf import get_token, rotate_token
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import UserNoteSerializer
-from .models import User_note
+from .serializers import UserNoteSerializer, ImageContentSerializer, AudioContentSerializer
+from .models import User_note, Content, ImageContent, AudioContent
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.views import APIView
 
 from api.models import User_info
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
@@ -146,3 +152,33 @@ def edit_info(request):
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON', 'success': False}, status=400)
     return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)
+
+
+class ContentUploadView(APIView):
+    def post(self, request, *args, **kwargs):
+        content_id = request.data.get('content_id')
+        content_type = request.data.get('type')
+        file = request.FILES.get('file')
+
+        if not content_id or not content_type or not file:
+            return Response({"error": "Missing id, type, or file"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            content_instance = Content.objects.get(id=content_id)
+        except Content.DoesNotExist:
+            return Response({"error": "Content not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if content_type == '1':  # ImageContent
+            image_content = ImageContent.objects.get(content=content_instance)
+            image_content.image = file
+            image_content.save()
+            serializer = ImageContentSerializer(image_content)
+        elif content_type == '2':  # AudioContent
+            audio_content = AudioContent.objects.get(content=content_instance)
+            audio_content.audio = file
+            audio_content.save()
+            serializer = AudioContentSerializer(audio_content)
+        else:
+            return Response({"error": "Invalid content type"}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

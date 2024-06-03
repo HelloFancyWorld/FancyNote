@@ -7,53 +7,22 @@ public class NoteItem {
 
     private int type;
     private String content;
-    private String imagePath;
-    private String audioPath;
 
     public NoteItem(int type, String content) {
         this.type = type;
         this.content = content;
     }
 
-    public NoteItem(int type, String content, String imagePath) {
-        this.type = type;
-        this.content = content;
-        this.imagePath = imagePath;
-    }
-
-    public NoteItem(int type, String content, String imagePath, String audioPath) {
-        this.type = type;
-        this.content = content;
-        this.imagePath = imagePath;
-        this.audioPath = audioPath;
-    }
-
     public int getType() {
         return type;
     }
 
-    public String getContent() {
+    public String getcontent() {
         return content;
     }
 
-    public void setContent(String content) {
+    public void setcontent(String content) {
         this.content = content;
-    }
-
-    public String getImagePath() {
-        return imagePath;
-    }
-
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
-    }
-
-    public String getAudioPath() {
-        return audioPath;
-    }
-
-    public void setAudioPath(String audioPath) {
-        this.audioPath = audioPath;
     }
 }
 

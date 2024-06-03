@@ -35,6 +35,7 @@ import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -42,6 +43,15 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
+import com.example.myapplication.network.ApiClient;
+import com.example.myapplication.network.ApiService;
+import com.example.myapplication.network.NoteRequest;
+import com.example.myapplication.network.NoteResponse;
+import com.example.myapplication.network.UploadAvatarResponse;
+import com.example.myapplication.network.UploadFileResponse;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.yalantis.ucrop.util.FileUtils;
 import com.zhihu.matisse.Matisse;
 import com.zhihu.matisse.MimeType;
 import com.zhihu.matisse.engine.impl.GlideEngine;
@@ -52,7 +62,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class AddNoteActivity extends BaseActivity {
@@ -60,9 +80,9 @@ public class AddNoteActivity extends BaseActivity {
     private static final int IMAGE_PICKER = 1001;
     //private static final int VIDEO_PICKER = 1002;
     private static final int REQUEST_CODE_CHOOSE = 23;
-    private ArrayList<NoteItem> noteItemList;
+    private ArrayList<NoteItem> noteItemList = new ArrayList<>();
     List<String> imageList = new ArrayList<>();
-    List<String> mediaList = new ArrayList<>();
+    List<String> audioList = new ArrayList<>();
     private static final int REQUEST_PICK_AUDIO = 24;
     private static final int REQUEST_RECORD_AUDIO = 25;
     private ActivityResultLauncher<Intent> matisseLauncher;
@@ -70,7 +90,7 @@ public class AddNoteActivity extends BaseActivity {
     private static final String TAG = "MyActivityTag";
     private EditText etTitle;
     private EditText etContent;//内容
-    private TextView tvImage, tvCancel, tvSave,tvAudio;//图片,取消,保存
+    private TextView tvImage, tvCancel, tvSave,tvAudio, tvComplete;//图片,取消,保存,完成
     private LinearLayout ivContent;
     private ScrollView scrollView;
     private VideoView vvContent;
@@ -78,6 +98,8 @@ public class AddNoteActivity extends BaseActivity {
     private ExoPlayer player;
     private String Tag;
     private Toolbar toolbar;
+
+    private SharedPreferences sharedPreferences;
 
     // 选择的视图，用于删除时判断
     private View selectedView = null;
@@ -121,10 +143,12 @@ public class AddNoteActivity extends BaseActivity {
         ivContent = (LinearLayout) findViewById(R.id.linearLayout);
         scrollView = findViewById(R.id.scroll);
         ivContent = findViewById(R.id.linearLayout);
+        tvComplete = (TextView)findViewById(R.id.tvComplete);
         tvImage.setOnClickListener(this);
         tvCancel.setOnClickListener(this);
         tvSave.setOnClickListener(this);
         tvAudio.setOnClickListener(this);
+        tvComplete.setOnClickListener(this);
 
         scale = getResources().getDisplayMetrics().density;
         marginInPx = (int) (marginInDp * scale + 0.5f);
@@ -154,19 +178,25 @@ public class AddNoteActivity extends BaseActivity {
                         .showPreview(false) // Default is `true`
                         .forResult(REQUEST_CODE_CHOOSE);
             }
-            else if(v.getId()==R.id.tvSave) {
+            else if(v.getId()==R.id.tvComplete) {
                 String title = etTitle.getText().toString().trim();
                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                 traverseViews(containerLayout);
-                String content = etContent.getText().toString().trim();
                 if (title.length() <= 0 || noteItemList.isEmpty()) {
                     Toast.makeText(getApplicationContext(), "请输入内容", Toast.LENGTH_SHORT).show();
                     return;
                 }
                 insertData(title);
+
+                // 打印noteItemList
+//                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+//                String json = gson.toJson(noteItemList);
+//                Log.d("noteitemlist", json);
+
+                editNoteRequest();
+
                 Toast.makeText(getApplicationContext(), "保存成功!", Toast.LENGTH_SHORT).show();
-                finish();
             }
             else if(v.getId()==R.id.tvAudio){
                 checkPermission();
@@ -187,54 +217,138 @@ public class AddNoteActivity extends BaseActivity {
                         .show();
             }
     }
+
+    public void editNoteRequest() {
+        // Show a loading dialog or some UI indication
+
+
+        sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+
+        // 获取当前时间
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
+        String currentTime = sdf.format(new Date());
+        // Create EditNoteRequest object
+        String title = etTitle.getText().toString().trim();
+        NoteRequest noteRequest = new NoteRequest(title, currentTime, currentTime, noteItemList);
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json = gson.toJson(noteRequest);
+        Log.d("noteitemlist", json);
+        // Send the request
+        apiService.createNote(noteRequest).enqueue(new Callback<NoteResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<NoteResponse> call, @NonNull Response<NoteResponse> response) {
+                // Hide loading dialog or UI indication
+                if (response.isSuccessful()) {
+                    NoteResponse noteResponse = response.body();
+                    handleNoteContents(noteResponse.getContents());
+                    Toast.makeText(AddNoteActivity.this, "Note created successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(AddNoteActivity.this, "Failed to edit note", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<NoteResponse> call, Throwable t) {
+                // Hide loading dialog or UI indication
+                Toast.makeText(AddNoteActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void handleNoteContents(List<NoteContent> contents) {
+        for (NoteContent content : contents) {
+            int contentId = content.getId();
+            int type = content.getType();
+
+            switch (type) {
+                case NoteItem.TYPE_IMAGE:
+                    if (content.getImageContent() != null) {
+                        String imagePath = content.getImageContent().getLocal_path();
+                        Uri imageUri = Uri.parse(imagePath);
+                        uploadFile(imageUri, contentId, NoteItem.TYPE_IMAGE);
+                    }
+                    break;
+
+                case NoteItem.TYPE_AUDIO:
+                    if (content.getAudioContent() != null) {
+                        String audioPath = content.getAudioContent().getLocal_path();
+                        Uri audioUri = Uri.parse(audioPath);
+                        uploadFile(audioUri, contentId, NoteItem.TYPE_AUDIO);
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+
+
+    private void uploadFile(Uri uri, int contentId, int type) {
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+
+        // Create a file from the Uri
+        File file = new File(FileUtils.getPath(this, uri));
+        MediaType mediaType = MediaType.parse(getContentResolver().getType(uri));
+        RequestBody requestFile = RequestBody.create(file, mediaType);
+        MultipartBody.Part partFile = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+        RequestBody content_id = RequestBody.create(String.valueOf(contentId), MediaType.parse("multipart/form-data"));
+        RequestBody type0 = RequestBody.create(String.valueOf(type), MediaType.parse("multipart/form-data"));
+
+        apiService.uploadFile(partFile, content_id, type0).enqueue(new Callback<UploadFileResponse>() {
+            @Override
+            public void onResponse(Call<UploadFileResponse> call, Response<UploadFileResponse> response) {
+                if (response.isSuccessful()) {
+                    UploadFileResponse uploadResponse = response.body();
+                    if (uploadResponse.isSuccess()) {
+                        Toast.makeText(AddNoteActivity.this, "文件上传成功", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(AddNoteActivity.this, "文件上传失败: " + uploadResponse.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(AddNoteActivity.this, "文件上传失败", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<UploadFileResponse> call, Throwable t) {
+                Toast.makeText(AddNoteActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     private void traverseViews(ViewGroup parent) {
-        for (int i = 0; i < parent.getChildCount(); i++) {
+        int audio_index = 0;
+        int image_index = 0;
+        for (int i = 1; i < parent.getChildCount(); i++) { //从1开始不计标题
             View child = parent.getChildAt(i);
-            int order=0;
-            int j=0;
-            int k=0;
-            // 处理子组件
             if (child instanceof PlayerView) {
-                noteItemList.add(new NoteItem(order, "Media", mediaList.get(k)));
-                k++;
-                order++;
-                // 处理 TextView
+                noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, audioList.get(audio_index)));
+                audio_index++;
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
-                if(editText.getText().toString().trim()!=null){
-                    noteItemList.add(new NoteItem(order, "Text", editText.getText().toString().trim()));
-                    order++;
-                }
-                // 处理 EditText
-                System.out.println("EditText hint: " + editText.getHint());
+                String text = editText.getText().toString().trim();
+                NoteItem new_noteitem = new NoteItem(NoteItem.TYPE_TEXT, text);
+                noteItemList.add(new_noteitem);
             } else if (child instanceof ImageView) {
-                noteItemList.add(new NoteItem(order, "Image", imageList.get(j)));
-                j++;
-                order++;
-                // 处理 Button
-            } else if (child instanceof ViewGroup) {
-                // 如果是 ViewGroup，递归遍历其子组件
-                traverseViews((ViewGroup) child);
+                noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, imageList.get(image_index)));
+                image_index++;
             }
         }
     }
-    private boolean isViewAtPosition(float x, float y) {
-        for (int i = 0; i < scrollView.getChildCount(); i++) {
-            View child = scrollView.getChildAt(i);
-            Rect rect = new Rect();
-            child.getHitRect(rect);
-            if (rect.contains((int) x, (int) y)) {
-                return true;
-            }
-        }
-        return false;
-    }
+
     private void addEditText() {
         // 创建新的 EditText
         EditText editText = new EditText(this);
 
         // 设置字体大小，以 sp 为单位
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         editText.setBackground(null);
 
         // 设置 EditText 的布局参数
@@ -258,7 +372,7 @@ public class AddNoteActivity extends BaseActivity {
     private void addEditTextWithText(String text) {
         EditText editText = new EditText(this);
         editText.setText(text);
-        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         editText.setBackground(null);
 
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
@@ -484,10 +598,10 @@ public class AddNoteActivity extends BaseActivity {
         }
         catch(Exception e)
         {
-            Toast.makeText(getBaseContext(),e.toString(),0).show();
+            Toast.makeText(getBaseContext(),e.toString(), Toast.LENGTH_SHORT).show();
         }
         saveFileToLocalInternalStorage(uri);
-        mediaList.add(audioUrl.toString());
+        audioList.add(audioUrl.toString());
     }
     private void stopRecord(){
         if(mr != null){
