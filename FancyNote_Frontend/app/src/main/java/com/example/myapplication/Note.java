@@ -5,8 +5,9 @@ import java.util.ArrayList;
 public class Note implements Serializable {
 
     private int id;
-
+    private int account;
     private String title;
+    private String Abstract;
     private ArrayList<NoteItem> content;
     private String time;
     private String imagePath;
@@ -21,6 +22,8 @@ public class Note implements Serializable {
     public void setId(int id) {
         this.id = id;
     }
+    public int getUserid(){ return account; }
+    public void setUserid(int user){this.account=user;}
 
     public String getTitle() {
         return title;
@@ -44,6 +47,13 @@ public class Note implements Serializable {
 
     public void setTime(String time) {
         this.time = time;
+    }
+    public String getAbstract() {
+        return Abstract;
+    }
+
+    public void setAbstract(String Abstract) {
+        this.Abstract = Abstract;
     }
     public String getTag() {
         return tag;

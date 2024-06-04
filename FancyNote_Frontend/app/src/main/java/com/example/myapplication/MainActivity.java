@@ -1,5 +1,7 @@
 package com.example.myapplication;
 
+import static com.example.myapplication.NoteItem.TYPE_TEXT;
+
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -26,6 +28,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SearchView;
@@ -49,6 +52,8 @@ import com.example.myapplication.network.SignupResponse;
 import com.example.myapplication.network.UploadAvatarResponse;
 import com.example.myapplication.ui.theme.CircleWithBorderTransformation;
 import com.google.android.material.navigation.NavigationView;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.yalantis.ucrop.util.FileUtils;
 
 import okhttp3.MultipartBody;
@@ -59,6 +64,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 import java.io.File;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -450,14 +456,30 @@ public class MainActivity extends BaseActivity {
             String title = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TITLE));
             String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
             String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
-            String imagePath = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_IMAGE_URL));
-            String audioPath = cursor.getString(cursor.getColumnIndex(DatabaseHelper.AUDIO_URL));
             String tag=cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
+            String Abstract="";
+            Gson gson = new Gson();
+            Type type = new TypeToken<List<NoteItem>>(){}.getType();
+            ArrayList<NoteItem> structArray = gson.fromJson(content, type);
+            for (int i = 0; i < structArray.size(); i++) {
+                NoteItem noteItem = structArray.get(i);
+                if (noteItem.getType() == TYPE_TEXT) {
+                    if(noteItem.getcontent().length()<15){
+                        Abstract=noteItem.getcontent();
+                    }
+                    else{
+                        Abstract=noteItem.getcontent().substring(0,14)+"...";
+                    }
+
+                }
+            }
             Note note = new Note();
             note.setId(id);
             note.setTitle(title);
             note.setTime(time);
             note.setTag(tag);
+            note.setContent(structArray);
+            note.setAbstract(Abstract);
             noteList.add(note);
         }
         cursor.close();
@@ -470,15 +492,31 @@ public class MainActivity extends BaseActivity {
             String title = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TITLE));
             String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
             String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
-            String imagePath = cursor.getString(cursor.getColumnIndex(DatabaseHelper.COLUMN_IMAGE_URL));
-            String audioPath = cursor.getString(cursor.getColumnIndex(DatabaseHelper.AUDIO_URL));
             String tag=cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
+            String Abstract="";
+            Gson gson = new Gson();
+            Type type = new TypeToken<List<NoteItem>>(){}.getType();
+            ArrayList<NoteItem> structArray = gson.fromJson(content, type);
+            for (int i = 0; i < structArray.size(); i++) {
+                NoteItem noteItem = structArray.get(i);
+                if (noteItem.getType() == TYPE_TEXT) {
+                    if(noteItem.getcontent().length()<15){
+                        Abstract=noteItem.getcontent();
+                    }
+                    else{
+                        Abstract=noteItem.getcontent().substring(0,14)+"...";
+                    }
+
+                }
+            }
             if(String.valueOf(Tag).equals(tag)) {
                 Note note = new Note();
                 note.setId(id);
                 note.setTitle(title);
+                note.setContent(structArray);
                 note.setTime(time);
                 note.setTag(tag);
+                note.setAbstract(Abstract);
                 noteList.add(note);
             }
         }
@@ -491,24 +529,45 @@ public class MainActivity extends BaseActivity {
         //添加分隔线
         rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
     }
-//    private void searchNotes(String text) {
-//        // 假设你使用Room数据库
-//        List<Note> tmpList = new ArrayList<>();
-//        for(int i=0;i<noteList.size();i++) {
-//                String content = noteList.get(i).getContent();
-//                if (content.contains(text)) {
-//                    Note note = noteList.get(i);
-//                    tmpList.add(note);
-//                }
-//        }
-//        mAdapter = new NoteListAdapter(this, tmpList);
-//        LinearLayoutManager manager = new LinearLayoutManager(this);
-//        manager.setOrientation(LinearLayoutManager.VERTICAL);
-//        rcvNoteList.setLayoutManager(manager);
-//        rcvNoteList.setAdapter(mAdapter);
-//        //添加分隔线
-//        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
-//    }
+    private void searchNotes(String text) {
+        // 假设你使用Room数据库
+        List<Note> tmpList = new ArrayList<>();
+        String Abstract="";
+        for(int i=0;i<noteList.size();i++) {
+            ArrayList<NoteItem> content = noteList.get(i).getContent();
+            for (int j = 0; j < content.size(); j++) {
+                NoteItem noteItem = content.get(j);
+                if (noteItem.getType() == TYPE_TEXT) {
+                    if(noteItem.getcontent().contains(text)){
+                        int now=noteItem.getcontent().indexOf(text);
+                        if(now<7&&now+text.length()+7<=noteItem.getcontent().length()){
+                            Abstract=noteItem.getcontent().substring(0,now+text.length()+7)+"...";
+                        }
+                        else if(now<7&&now+text.length()+7>noteItem.getcontent().length()){
+                            Abstract=noteItem.getcontent();
+                        }
+                        else if(now>=7&&now+text.length()+7<=noteItem.getcontent().length()){
+                            Abstract="..."+noteItem.getcontent().substring(now-7,now+text.length()+7)+"...";
+                        }
+                        else if(now>=7&&now+text.length()+7>noteItem.getcontent().length()){
+                            Abstract="..."+noteItem.getcontent().substring(now-7,noteItem.getcontent().length()-1);
+                        }
+                        Abstract=noteItem.getcontent().substring(now-7,now+text.length());
+                        noteList.get(i).setAbstract(Abstract);
+                        tmpList.add(noteList.get(i));
+                        break;
+                    }
+                }
+            }
+        }
+        mAdapter = new NoteListAdapter(this, tmpList);
+        LinearLayoutManager manager = new LinearLayoutManager(this);
+        manager.setOrientation(LinearLayoutManager.VERTICAL);
+        rcvNoteList.setLayoutManager(manager);
+        rcvNoteList.setAdapter(mAdapter);
+        //添加分隔线
+        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
+    }
 
 
 

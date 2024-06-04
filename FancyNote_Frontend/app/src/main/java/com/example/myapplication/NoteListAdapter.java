@@ -42,7 +42,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.NoteLi
     public void onBindViewHolder(NoteListViewHolder holder, int position) {
         final Note note = noteList.get(position);
         holder.tvTitle.setText( "标题:"+note.getTitle());
-        holder.tvContent.setText("内容:"+note.getContent());
+        holder.tvContent.setText("内容:"+note.getAbstract());
         holder.tvTime.setText(note.getTime());
 //        if (!TextUtils.isEmpty(note.getVideoPath())){
 //            holder.ivPic.setImageBitmap(getVideoImage(note.getVideoPath(),100,100, MediaStore.Images.Thumbnails.MICRO_KIND));

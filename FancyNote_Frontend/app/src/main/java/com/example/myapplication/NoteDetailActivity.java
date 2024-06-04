@@ -26,6 +26,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,6 +136,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                 imageList.add(noteItem.getcontent());
                 Uri uri = Uri.parse(noteItem.getcontent());
                 imageView.setImageURI(uri);
+                imageView.setTag(uri);
                 tvContent.addView(imageView);
             }
             else if(noteItem.getType()==TYPE_AUDIO){
@@ -144,6 +147,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                     // 设置要播放的媒体
                     audioList.add(noteItem.getcontent());
                     Uri uri = Uri.parse(noteItem.getcontent());
+                    playerView.setTag(uri);
                     MediaItem mediaItem = MediaItem.fromUri(uri);
                     player.setMediaItem(mediaItem);
                     //mediaPlayer.prepareAsync();
@@ -205,6 +209,9 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         ContentValues cv = new ContentValues();
         cv.put(DatabaseHelper.TITLE,title);
         cv.put(DatabaseHelper.TIME, Utils.getTimeStr());
+        Gson gson = new Gson();
+        String structArrayJson = gson.toJson(noteItemList);
+        cv.put(DatabaseHelper.CONTENT,structArrayJson);
         writableDB.update(DatabaseHelper.TABLE_NAME,cv,DatabaseHelper.ID + "=" + note.getId(),null);
     }
 
@@ -245,17 +252,24 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
-        for (int i = 0; i < parent.getChildCount(); i++) {
+        for (int i = 1; i < parent.getChildCount(); i++) { //从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, audioList.get(audio_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 audio_index++;
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
                 String text = editText.getText().toString().trim();
-                noteItemList.add(new NoteItem(NoteItem.TYPE_TEXT, text));
+                NoteItem new_noteitem = new NoteItem(NoteItem.TYPE_TEXT, text);
+                noteItemList.add(new_noteitem);
             } else if (child instanceof ImageView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, imageList.get(image_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 image_index++;
             }
         }
