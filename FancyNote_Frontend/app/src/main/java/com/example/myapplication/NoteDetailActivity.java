@@ -14,6 +14,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -37,10 +38,10 @@ import java.util.List;
 public class NoteDetailActivity extends BaseActivity implements View.OnTouchListener {
 
     private static final int IMAGE_PICKER = 1001;
-    private TextView tvTitle;
+    private EditText tvTitle;
     private LinearLayout tvContent;//内容
     private static final String TAG = "MyActivityTag";
-    private ArrayList<NoteItem> noteItemList;
+    private ArrayList<NoteItem> noteItemList = new ArrayList<>();
     private TextView tvEdite,tvDelete,tvChange, tvReturn;//取消,保存\
     List<String> imageList = new ArrayList<>();
     List<String> audioList = new ArrayList<>();
@@ -70,7 +71,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
     }
 
     private void initViews() {
-        tvTitle = (TextView) findViewById(R.id.tvTitle);
+        tvTitle = (EditText) findViewById(R.id.etTitle);
         tvContent = (LinearLayout) findViewById(R.id.linearLayout);
         tvEdite = (TextView) findViewById(R.id.tvEdite);
         tvDelete = (TextView) findViewById(R.id.tvDelete);
@@ -106,7 +107,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         // 设置一些属性（可选）
 
         // 将 EditText 添加到 LinearLayout
-        ivContent.addView(editText);
+        tvContent.addView(editText);
     }
 
     private void setDataToView() {
@@ -153,6 +154,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                     //mediaPlayer.prepareAsync();
                     player.prepare();
                     player.play();
+                    tvContent.addView(playerView);
                 } catch (Exception e) {
                     Toast.makeText(getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
                 }
@@ -184,6 +186,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 String title = tvTitle.getText().toString().trim();
+                                Log.i("title", title);
                                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                                 traverseViews(containerLayout);
@@ -263,6 +266,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
                 String text = editText.getText().toString().trim();
+                Log.i("title", text);
                 NoteItem new_noteitem = new NoteItem(NoteItem.TYPE_TEXT, text);
                 noteItemList.add(new_noteitem);
             } else if (child instanceof ImageView) {
