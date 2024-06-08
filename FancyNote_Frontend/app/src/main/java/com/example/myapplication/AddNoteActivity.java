@@ -329,7 +329,10 @@ public class AddNoteActivity extends BaseActivity {
         for (int i = 1; i < parent.getChildCount(); i++) { //从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, audioList.get(audio_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 audio_index++;
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
@@ -337,7 +340,10 @@ public class AddNoteActivity extends BaseActivity {
                 NoteItem new_noteitem = new NoteItem(NoteItem.TYPE_TEXT, text);
                 noteItemList.add(new_noteitem);
             } else if (child instanceof ImageView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, imageList.get(image_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 image_index++;
             }
         }
@@ -410,6 +416,7 @@ public class AddNoteActivity extends BaseActivity {
                         ;
                         imageView.setVisibility(View.VISIBLE);
                         imageView.setImageURI(selectedUris.get(i));
+                        imageView.setTag(selectedUris.get(i));
                         imageView.setAdjustViewBounds(true);
                         imageView.setPadding(5, 5, 5, 5);
 
@@ -433,6 +440,7 @@ public class AddNoteActivity extends BaseActivity {
                         ;
                         imageView.setVisibility(View.VISIBLE);
                         imageView.setImageURI(selectedUris.get(i));
+                        imageView.setTag(selectedUris.get(i));
                         imageView.setAdjustViewBounds(true);
                         imageView.setPadding(5, 5, 5, 5);
 
@@ -454,6 +462,7 @@ public class AddNoteActivity extends BaseActivity {
                         ;
                         imageView.setVisibility(View.VISIBLE);
                         imageView.setImageURI(selectedUris.get(i));
+                        imageView.setTag(selectedUris.get(i));
                         imageView.setAdjustViewBounds(true);
                         imageView.setPadding(5, 5, 5, 5);
 
@@ -479,6 +488,7 @@ public class AddNoteActivity extends BaseActivity {
                         ;
                         imageView.setVisibility(View.VISIBLE);
                         imageView.setImageURI(selectedUris.get(i));
+                        imageView.setTag(selectedUris.get(i));
                         imageView.setAdjustViewBounds(true);
                         imageView.setPadding(5, 5, 5, 5);
 
@@ -501,6 +511,7 @@ public class AddNoteActivity extends BaseActivity {
                     ImageView imageView=new ImageView(this);;
                     imageView.setVisibility(View.VISIBLE);
                     imageView.setImageURI(selectedUris.get(i));
+                    imageView.setTag(selectedUris.get(i));
                     imageView.setAdjustViewBounds(true);
                     imageView.setPadding(5,5,5,5);
 
@@ -536,21 +547,9 @@ public class AddNoteActivity extends BaseActivity {
         cv.put(DatabaseHelper.TITLE,title);
         cv.put(DatabaseHelper.TIME, Utils.getTimeStr());
         cv.put(DatabaseHelper.TAG,Tag);
-        String all_photos;
-        if (null != selectedUris && selectedUris.size() > 0) {
-            //存储图片路径
-            ContentValues values = new ContentValues();
-            all_photos=selectedUris.get(0).toString();
-            for(int i=1;i<selectedUris.size();i++){
-                all_photos+=" ";
-                all_photos+=selectedUris.get(i).toString();
-            }
-            cv.put(DatabaseHelper.COLUMN_IMAGE_URL, all_photos);
-        }
-        if (null != audioUrl) {
-            //存储图片路径
-            cv.put(DatabaseHelper.AUDIO_URL, audioUrl.toString());
-        }
+        Gson gson = new Gson();
+        String structArrayJson = gson.toJson(noteItemList);
+        cv.put(DatabaseHelper.CONTENT,structArrayJson);
         writableDB.insert(DatabaseHelper.TABLE_NAME, null, cv);
     }
 
@@ -587,8 +586,9 @@ public class AddNoteActivity extends BaseActivity {
         try {
             PlayerView playerView = new PlayerView(this);
             playerView.setPlayer(player);
+            playerView.setTag(copy);
 
-            // 设置要播放的媒体
+            // 设置要播放的媒体=====
             MediaItem mediaItem = MediaItem.fromUri(copy);
             player.setMediaItem(mediaItem);
             //mediaPlayer.prepareAsync();

@@ -14,6 +14,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -26,6 +27,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,10 +38,10 @@ import java.util.List;
 public class NoteDetailActivity extends BaseActivity implements View.OnTouchListener {
 
     private static final int IMAGE_PICKER = 1001;
-    private TextView tvTitle;
+    private EditText tvTitle;
     private LinearLayout tvContent;//内容
     private static final String TAG = "MyActivityTag";
-    private ArrayList<NoteItem> noteItemList;
+    private ArrayList<NoteItem> noteItemList = new ArrayList<>();
     private TextView tvEdite,tvDelete,tvChange, tvReturn;//取消,保存\
     List<String> imageList = new ArrayList<>();
     List<String> audioList = new ArrayList<>();
@@ -68,7 +71,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
     }
 
     private void initViews() {
-        tvTitle = (TextView) findViewById(R.id.tvTitle);
+        tvTitle = (EditText) findViewById(R.id.etTitle);
         tvContent = (LinearLayout) findViewById(R.id.linearLayout);
         tvEdite = (TextView) findViewById(R.id.tvEdite);
         tvDelete = (TextView) findViewById(R.id.tvDelete);
@@ -104,7 +107,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         // 设置一些属性（可选）
 
         // 将 EditText 添加到 LinearLayout
-        ivContent.addView(editText);
+        tvContent.addView(editText);
     }
 
     private void setDataToView() {
@@ -134,6 +137,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                 imageList.add(noteItem.getcontent());
                 Uri uri = Uri.parse(noteItem.getcontent());
                 imageView.setImageURI(uri);
+                imageView.setTag(uri);
                 tvContent.addView(imageView);
             }
             else if(noteItem.getType()==TYPE_AUDIO){
@@ -144,11 +148,13 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                     // 设置要播放的媒体
                     audioList.add(noteItem.getcontent());
                     Uri uri = Uri.parse(noteItem.getcontent());
+                    playerView.setTag(uri);
                     MediaItem mediaItem = MediaItem.fromUri(uri);
                     player.setMediaItem(mediaItem);
                     //mediaPlayer.prepareAsync();
                     player.prepare();
                     player.play();
+                    tvContent.addView(playerView);
                 } catch (Exception e) {
                     Toast.makeText(getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
                 }
@@ -180,6 +186,7 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 String title = tvTitle.getText().toString().trim();
+                                Log.i("title", title);
                                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                                 traverseViews(containerLayout);
@@ -205,6 +212,9 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
         ContentValues cv = new ContentValues();
         cv.put(DatabaseHelper.TITLE,title);
         cv.put(DatabaseHelper.TIME, Utils.getTimeStr());
+        Gson gson = new Gson();
+        String structArrayJson = gson.toJson(noteItemList);
+        cv.put(DatabaseHelper.CONTENT,structArrayJson);
         writableDB.update(DatabaseHelper.TABLE_NAME,cv,DatabaseHelper.ID + "=" + note.getId(),null);
     }
 
@@ -245,17 +255,25 @@ public class NoteDetailActivity extends BaseActivity implements View.OnTouchList
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
-        for (int i = 0; i < parent.getChildCount(); i++) {
+        for (int i = 1; i < parent.getChildCount(); i++) { //从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, audioList.get(audio_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 audio_index++;
             } else if (child instanceof EditText) {
                 EditText editText = (EditText) child;
                 String text = editText.getText().toString().trim();
-                noteItemList.add(new NoteItem(NoteItem.TYPE_TEXT, text));
+                Log.i("title", text);
+                NoteItem new_noteitem = new NoteItem(NoteItem.TYPE_TEXT, text);
+                noteItemList.add(new_noteitem);
             } else if (child instanceof ImageView) {
-                noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, imageList.get(image_index)));
+                Object tag = child.getTag();
+                if (tag instanceof Uri) {
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                }
                 image_index++;
             }
         }

@@ -1,6 +1,8 @@
 package com.example.myapplication;
 
-public class NoteItem {
+import java.io.Serializable;
+
+public class NoteItem implements Serializable {
     public static final int TYPE_TEXT = 0;
     public static final int TYPE_IMAGE = 1;
     public static final int TYPE_AUDIO = 2;

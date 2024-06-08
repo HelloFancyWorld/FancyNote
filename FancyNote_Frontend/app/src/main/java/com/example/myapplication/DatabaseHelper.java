@@ -8,6 +8,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "notes.db";
     private static final int DATABASE_VERSION = 1;
     public static final String TABLE_NAME = "my_notepad1";//表名
+    public static final String USERID="user";
     public static final String ID = "_id";//id
     public static final String TIME = "time";//时间
     public static final String TITLE = "title";//标题
@@ -25,10 +26,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
                 TIME + " TEXT NOT NULL," +
                 TITLE + " TEXT NOT NULL,"+
+                USERID + " INTEGER,"+
                 CONTENT + " TEXT NOT NULL,"  +
-                TAG + " TEXT NOT NULL,"+
-                COLUMN_IMAGE_URL + " TEXT," +
-                AUDIO_URL+" TEXT"+
+                TAG + " TEXT NOT NULL"+
                 ")";
         db.execSQL(createTable);
     }
