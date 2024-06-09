@@ -1,4 +1,5 @@
 from django.shortcuts import render
+import os
 
 # Create your views here.
 
@@ -106,8 +107,16 @@ def change_avatar(request):
         try:
             file = request.FILES['avatar']
             user_info = request.user.user_info
+
+            # 获取旧的头像路径
+            old_avatar_path = user_info.avatar.path if user_info.avatar else None
+
             user_info.avatar = file
             user_info.save()
+
+            # 删除旧的头像文件
+            if old_avatar_path and os.path.exists(old_avatar_path):
+                os.remove(old_avatar_path)
 
             # 获取新的文件路径
             new_avatar_url = user_info.avatar.url
@@ -161,24 +170,24 @@ class ContentUploadView(APIView):
         file = request.FILES.get('file')
 
         if not content_id or not content_type or not file:
-            return Response({"error": "Missing id, type, or file"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "message": "Missing id, type, or file"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             content_instance = Content.objects.get(id=content_id)
         except Content.DoesNotExist:
-            return Response({"error": "Content not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"success": False, "message": "Content not found"}, status=status.HTTP_404_NOT_FOUND)
 
         if content_type == '1':  # ImageContent
             image_content = ImageContent.objects.get(content=content_instance)
             image_content.image = file
             image_content.save()
-            serializer = ImageContentSerializer(image_content)
+            new_url = image_content.image.url
         elif content_type == '2':  # AudioContent
             audio_content = AudioContent.objects.get(content=content_instance)
             audio_content.audio = file
             audio_content.save()
-            serializer = AudioContentSerializer(audio_content)
+            new_url = audio_content.audio.url
         else:
-            return Response({"error": "Invalid content type"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"success": False, "message": "Invalid content type"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response({"success": True, "message": "Invalid content type", "new_file_url": new_url}, status=status.HTTP_200_OK)

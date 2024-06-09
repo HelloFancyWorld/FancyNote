@@ -2,30 +2,31 @@ package com.example.myapplication;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Rect;
-import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.Image;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -36,6 +37,7 @@ import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.NonNull;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -47,7 +49,6 @@ import com.example.myapplication.network.ApiClient;
 import com.example.myapplication.network.ApiService;
 import com.example.myapplication.network.NoteRequest;
 import com.example.myapplication.network.NoteResponse;
-import com.example.myapplication.network.UploadAvatarResponse;
 import com.example.myapplication.network.UploadFileResponse;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -80,6 +81,8 @@ public class AddNoteActivity extends BaseActivity {
     private static final int IMAGE_PICKER = 1001;
     //private static final int VIDEO_PICKER = 1002;
     private static final int REQUEST_CODE_CHOOSE = 23;
+
+    private String currentTime;
     private ArrayList<NoteItem> noteItemList = new ArrayList<>();
     List<String> imageList = new ArrayList<>();
     List<String> audioList = new ArrayList<>();
@@ -90,7 +93,8 @@ public class AddNoteActivity extends BaseActivity {
     private static final String TAG = "MyActivityTag";
     private EditText etTitle;
     private EditText etContent;//内容
-    private TextView tvImage, tvCancel, tvSave,tvAudio, tvComplete;//图片,取消,保存,完成
+    private ImageView ivImage, ivAudio, ivUpload, ivDownload;//图片,音频,上传,同步
+    private TextView tvComplete; //完成
     private LinearLayout ivContent;
     private ScrollView scrollView;
     private VideoView vvContent;
@@ -121,10 +125,9 @@ public class AddNoteActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
         Tag = intent.getStringExtra("key");
-        SharedPreferences pref = getSharedPreferences("author",MODE_PRIVATE);
         setContentView(R.layout.activity_add_note);
         initViews();
-        addEditText();
+        addEditText(-1);
     }
 
     private void initViews() {
@@ -136,30 +139,94 @@ public class AddNoteActivity extends BaseActivity {
 
         etTitle = (EditText) findViewById(R.id.etTitle);
         //etContent = (EditText) findViewById(R.id.etContent);
-        tvImage = (TextView) findViewById(R.id.tvImage);
-        tvCancel = (TextView) findViewById(R.id.tvCancel);
-        tvSave = (TextView) findViewById(R.id.tvSave);
-        tvAudio=(TextView)findViewById(R.id.tvAudio);
+        ivImage = (ImageView) findViewById(R.id.ivImage);
+        ivAudio = (ImageView) findViewById(R.id.ivAudio);
+        ivUpload = (ImageView) findViewById(R.id.ivUpload);
+        ivDownload=(ImageView)findViewById(R.id.ivDownload);
         ivContent = (LinearLayout) findViewById(R.id.linearLayout);
         scrollView = findViewById(R.id.scroll);
         ivContent = findViewById(R.id.linearLayout);
         tvComplete = (TextView)findViewById(R.id.tvComplete);
-        tvImage.setOnClickListener(this);
-        tvCancel.setOnClickListener(this);
-        tvSave.setOnClickListener(this);
-        tvAudio.setOnClickListener(this);
+        ivImage.setOnClickListener(this);
+        ivAudio.setOnClickListener(this);
+        ivUpload.setOnClickListener(this);
+        ivDownload.setOnClickListener(this);
         tvComplete.setOnClickListener(this);
+        scrollView.setOnClickListener(this);
 
         scale = getResources().getDisplayMetrics().density;
         marginInPx = (int) (marginInDp * scale + 0.5f);
-    }
 
+        etTitle.setOnKeyListener(new View.OnKeyListener() {
+            @Override
+            public boolean onKey(View v, int keyCode, KeyEvent event) {
+                if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if(ivContent.getChildAt(1) instanceof EditText) {
+                        ivContent.getChildAt(1).requestFocus();
+                    }
+                    else {
+
+                        selectView(ivContent.getChildAt(1));
+                    }
+                    return true;  // Consume the event
+                }
+                return false;
+            }
+        });
+    }
     @Override
     public void onClick(View v) {
-            if (v.getId() == R.id.tvCancel) { // 取消该备忘
-                getOnBackPressedDispatcher().onBackPressed();
+            if (v.getId() == R.id.scroll) {//点击空白处聚焦到最后一个edittext
+                for (int i = ivContent.getChildCount() - 1; i >= 0; i--) {
+                    View view = ivContent.getChildAt(i);
+                    if (view instanceof EditText) {
+                        view.requestFocus();
+                        ((EditText) view).setSelection(((EditText) view).getText().length());
+                        break;
+                    }
+                }
             }
-            else if(v.getId()==R.id.tvImage){
+            if (v.getId() == R.id.ivUpload) { // 上传云端
+                String title = etTitle.getText().toString().trim();
+                ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
+
+                traverseViews(containerLayout);
+                if (title.length() <= 0 & noteItemList.isEmpty()) {
+                    Toast.makeText(getApplicationContext(), "请输入内容", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                insertData(title);
+
+                // 打印noteItemList
+//                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+//                String json = gson.toJson(noteItemList);
+//                Log.d("noteitemlist", json);
+
+                editNoteRequest();
+            }
+            else if (v.getId() == R.id.ivUpload) { // 从云端同步
+            }
+            else if(v.getId()==R.id.tvComplete) {
+                String title = etTitle.getText().toString().trim();
+                ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
+
+                traverseViews(containerLayout);
+                if (title.length() <= 0 && noteItemList.isEmpty()) {
+                    Toast.makeText(getApplicationContext(), "请输入内容", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                insertData(title);
+
+                // 打印noteItemList
+//                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+//                String json = gson.toJson(noteItemList);
+//                Log.d("noteitemlist", json);
+
+                editNoteRequest();
+
+                Toast.makeText(getApplicationContext(), "保存成功!", Toast.LENGTH_SHORT).show();
+            }
+            else if(v.getId()==R.id.ivImage){
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_IMAGES}, 200);
                 }
@@ -178,27 +245,7 @@ public class AddNoteActivity extends BaseActivity {
                         .showPreview(false) // Default is `true`
                         .forResult(REQUEST_CODE_CHOOSE);
             }
-            else if(v.getId()==R.id.tvComplete) {
-                String title = etTitle.getText().toString().trim();
-                ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
-
-                traverseViews(containerLayout);
-                if (title.length() <= 0 || noteItemList.isEmpty()) {
-                    Toast.makeText(getApplicationContext(), "请输入内容", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                insertData(title);
-
-                // 打印noteItemList
-//                Gson gson = new GsonBuilder().setPrettyPrinting().create();
-//                String json = gson.toJson(noteItemList);
-//                Log.d("noteitemlist", json);
-
-                editNoteRequest();
-
-                Toast.makeText(getApplicationContext(), "保存成功!", Toast.LENGTH_SHORT).show();
-            }
-            else if(v.getId()==R.id.tvAudio){
+            else if(v.getId()==R.id.ivAudio){
                 checkPermission();
                 new AlertDialog.Builder(this)
                         .setTitle("Select Action")
@@ -227,9 +274,6 @@ public class AddNoteActivity extends BaseActivity {
         String cookie = sharedPreferences.getString("cookie", null);
         ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
 
-        // 获取当前时间
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault());
-        String currentTime = sdf.format(new Date());
         // Create EditNoteRequest object
         String title = etTitle.getText().toString().trim();
         NoteRequest noteRequest = new NoteRequest(title, currentTime, currentTime, noteItemList);
@@ -239,10 +283,10 @@ public class AddNoteActivity extends BaseActivity {
         Log.d("noteitemlist", json);
         // Send the request
         apiService.createNote(noteRequest).enqueue(new Callback<NoteResponse>() {
-            @Override
-            public void onResponse(@NonNull Call<NoteResponse> call, @NonNull Response<NoteResponse> response) {
-                // Hide loading dialog or UI indication
-                if (response.isSuccessful()) {
+                    @Override
+                    public void onResponse(@NonNull Call<NoteResponse> call, @NonNull Response<NoteResponse> response) {
+                        // Hide loading dialog or UI indication
+                        if (response.isSuccessful()) {
                     NoteResponse noteResponse = response.body();
                     handleNoteContents(noteResponse.getContents());
                     Toast.makeText(AddNoteActivity.this, "Note created successfully", Toast.LENGTH_SHORT).show();
@@ -342,14 +386,22 @@ public class AddNoteActivity extends BaseActivity {
             } else if (child instanceof ImageView) {
                 Object tag = child.getTag();
                 if (tag instanceof Uri) {
-                    noteItemList.add(new NoteItem(NoteItem.TYPE_AUDIO, ((Uri) tag).toString()));
+                    noteItemList.add(new NoteItem(NoteItem.TYPE_IMAGE, ((Uri) tag).toString()));
                 }
                 image_index++;
             }
         }
     }
 
-    private void addEditText() {
+    private void addEditText(int position) {
+        //如果要添加的position处已经有edittext，则直接return
+        if (position >= 0 && position < ivContent.getChildCount() && ivContent.getChildAt(position) instanceof EditText) {
+            return;
+        }
+        if (position == -1 && ivContent.getChildAt(ivContent.getChildCount()) instanceof EditText) {
+            return;
+        }
+
         // 创建新的 EditText
         EditText editText = new EditText(this);
 
@@ -370,12 +422,36 @@ public class AddNoteActivity extends BaseActivity {
         editText.setOnKeyListener(new CustomOnKeyListener(editText));
 
         // 将 EditText 添加到 LinearLayout
-        ivContent.addView(editText);
+        if(position == -1) {
+            ivContent.addView(editText);
+        }
+        else {
+            ivContent.addView(editText, position);
+        }
         // 将光标聚焦到新创建的 EditText
         editText.requestFocus();
+
+        // 为 EditText 设置 OnFocusChangeListener
+        editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    // 当 EditText 获得焦点时，取消现有的选中状态
+                    removeSelection();
+                }
+            }
+        });
     }
 
-    private void addEditTextWithText(String text) {
+    private void addEditTextWithText(String text, int position) {
+        //如果要添加的position处已经有edittext，则直接return
+        if (position >= 0 && position < ivContent.getChildCount() && ivContent.getChildAt(position) instanceof EditText) {
+            return;
+        }
+        if (position == -1 && ivContent.getChildAt(ivContent.getChildCount()) instanceof EditText) {
+            return;
+        }
+
         EditText editText = new EditText(this);
         editText.setText(text);
         editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
@@ -391,9 +467,25 @@ public class AddNoteActivity extends BaseActivity {
         editText.addTextChangedListener(new CustomTextWatcher());
         editText.setOnKeyListener(new CustomOnKeyListener(editText));
 
-        ivContent.addView(editText);
+        if(position == -1) {
+            ivContent.addView(editText);
+        }
+        else {
+            ivContent.addView(editText, position);
+        }
         editText.requestFocus();
         editText.setSelection(0); // 设置光标在EditText的最前面
+
+        // 为 EditText 设置 OnFocusChangeListener
+        editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View v, boolean hasFocus) {
+                if (hasFocus) {
+                    // 当 EditText 获得焦点时，取消现有的选中状态
+                    removeSelection();
+                }
+            }
+        });
     }
 
 
@@ -408,104 +500,120 @@ public class AddNoteActivity extends BaseActivity {
                 View focusedView = getCurrentFocus();//当前edittext
                 if (focusedView instanceof EditText) {
                     EditText focusedEditText = (EditText) focusedView;
+                    int position = ivContent.indexOfChild(focusedEditText);
                     int cursorPosition = focusedEditText.getSelectionStart();
+                    int last_index;
+                    ImageView imageView = new ImageView(this);
+                    imageView.setVisibility(View.VISIBLE);
+                    imageView.setImageURI(selectedUris.get(i));
+                    imageView.setTag(selectedUris.get(i));
+                    imageView.setAdjustViewBounds(true);
+                    imageView.setPadding(5, 5, 5, 5);
 
-                    if (focusedEditText.getText().toString().isEmpty()) { //当前edit为空，先删除
+                    // 创建并设置布局参数
+                    LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                    );
+
+                    layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
+                    imageView.setLayoutParams(layoutParams);
+
+                    imageList.add(selectedUris.get(i).toString());
+                    Log.i(TAG, "onCreate: " + selectedUris.get(i));
+                    // 预处理，如果光标位于空行则删除空行
+                    // 获取当前 EditText 的文本
+                    String currentText = focusedEditText.getText().toString();
+                    // 检查光标前后是否有换行符
+                    if (currentText.length() > 1 && currentText.charAt(cursorPosition - 1) == '\n' && currentText.charAt(cursorPosition) == '\n') {
+                        // 删除光标前的一个换行符
+                        currentText = currentText.substring(0, cursorPosition - 1) + currentText.substring(cursorPosition);
+                        focusedEditText.setText(currentText);
+                        // 更新光标位置
+                        focusedEditText.setSelection(cursorPosition - 1);
+                    }
+
+                    if(focusedEditText == etTitle) // 如果光标在标题，直接添加到开头
+                    {
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 1 > last_index) {
+                            ivContent.addView(imageView);
+                        }
+                        else {
+                            ivContent.addView(imageView, position + 1);
+                        }
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 2 > last_index) {
+                            addEditText(-1);
+                        }
+                        else {
+                            addEditText(position + 2);
+                        }
+                    }
+
+                    else if (focusedEditText.getText().toString().isEmpty()) { //当前edit为空，先删除
                         ivContent.removeView(focusedEditText);
-                        ImageView imageView = new ImageView(this);
-                        ;
-                        imageView.setVisibility(View.VISIBLE);
-                        imageView.setImageURI(selectedUris.get(i));
-                        imageView.setTag(selectedUris.get(i));
-                        imageView.setAdjustViewBounds(true);
-                        imageView.setPadding(5, 5, 5, 5);
-
-                        // 创建并设置布局参数
-                        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                        );
-
-                        layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
-                        imageView.setLayoutParams(layoutParams);
-
-                        imageList.add(selectedUris.get(i).toString());
-                        Log.i(TAG, "onCreate: " + selectedUris.get(i));
-                        ivContent.addView(imageView);
-                        addEditText();
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position > last_index) {
+                            ivContent.addView(imageView);
+                        }
+                        else {
+                            ivContent.addView(imageView, position);
+                        }
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 1 > last_index) {
+                            addEditText(-1);
+                        }
+                        else {
+                            addEditText(position + 1);
+                        }
                     } else if (cursorPosition == 0) {
                         // 光标在开头,在当前
-                        int position = ivContent.indexOfChild(focusedEditText);
-                        ImageView imageView = new ImageView(this);
-                        ;
-                        imageView.setVisibility(View.VISIBLE);
-                        imageView.setImageURI(selectedUris.get(i));
-                        imageView.setTag(selectedUris.get(i));
-                        imageView.setAdjustViewBounds(true);
-                        imageView.setPadding(5, 5, 5, 5);
-
-                        // 创建并设置布局参数
-                        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                        );
-
-                        layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
-                        imageView.setLayoutParams(layoutParams);
-
-                        imageList.add(selectedUris.get(i).toString());
-                        Log.i(TAG, "onCreate: " + selectedUris.get(i));
                         ivContent.addView(imageView, position);
                     } else if (cursorPosition == focusedEditText.getText().length()) {
                         // 光标在结尾
-                        ImageView imageView = new ImageView(this);
-                        ;
-                        imageView.setVisibility(View.VISIBLE);
-                        imageView.setImageURI(selectedUris.get(i));
-                        imageView.setTag(selectedUris.get(i));
-                        imageView.setAdjustViewBounds(true);
-                        imageView.setPadding(5, 5, 5, 5);
-
-                        // 创建并设置布局参数
-                        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                        );
-
-                        layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
-                        imageView.setLayoutParams(layoutParams);
-
-                        imageList.add(selectedUris.get(i).toString());
-                        Log.i(TAG, "onCreate: " + selectedUris.get(i));
-                        ivContent.addView(imageView);
-                        addEditText();
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 1 > last_index) {
+                            ivContent.addView(imageView);
+                        }
+                        else {
+                            ivContent.addView(imageView, position + 1);
+                        }
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 2 > last_index) {
+                            addEditText(-1);
+                        }
+                        else {
+                            addEditText(position + 2);
+                        }
                     } else {
                         // 光标在中间，分裂edittext，图片加在中间
                         String textBeforeCursor = focusedEditText.getText().toString().substring(0, cursorPosition);
                         String textAfterCursor = focusedEditText.getText().toString().substring(cursorPosition);
                         focusedEditText.setText(textBeforeCursor);
-                        ImageView imageView = new ImageView(this);
-                        ;
-                        imageView.setVisibility(View.VISIBLE);
-                        imageView.setImageURI(selectedUris.get(i));
-                        imageView.setTag(selectedUris.get(i));
-                        imageView.setAdjustViewBounds(true);
-                        imageView.setPadding(5, 5, 5, 5);
-
-                        // 创建并设置布局参数
-                        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-                                LinearLayout.LayoutParams.MATCH_PARENT,
-                                LinearLayout.LayoutParams.WRAP_CONTENT
-                        );
-
-                        layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
-                        imageView.setLayoutParams(layoutParams);
-
-                        imageList.add(selectedUris.get(i).toString());
-                        Log.i(TAG, "onCreate: " + selectedUris.get(i));
-                        ivContent.addView(imageView);
-                        addEditTextWithText(textAfterCursor);
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 1 > last_index) {
+                            ivContent.addView(imageView);
+                        }
+                        else {
+                            ivContent.addView(imageView, position + 1);
+                        }
+                        last_index = ivContent.getChildCount() - 1;
+                        if(position + 2 > last_index) {
+                            addEditTextWithText(textAfterCursor, -1);
+                        }
+                        else {
+                            addEditTextWithText(textAfterCursor, position + 2);
+                        }
                     }
+                    // 为 ImageView 设置点击选中事件
+                    imageView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // 点击时选中
+                            toggleSelectView((ImageView) v);
+                        }
+                    });
                 }
                 else {
                     ImageView imageView=new ImageView(this);;
@@ -527,8 +635,9 @@ public class AddNoteActivity extends BaseActivity {
                     imageList.add(selectedUris.get(i).toString());
                     Log.i(TAG, "onCreate: " + selectedUris.get(i));
                     ivContent.addView(imageView);
-                    addEditText();
+                    addEditText(-1);
                 }
+
             }
         }
 
@@ -537,15 +646,89 @@ public class AddNoteActivity extends BaseActivity {
                 // 处理选择的音频
             Log.i(TAG, "onCreate: " + audioUrl);
             playAudio(audioUrl);
-            addEditText();
         }
+    }
+    private void toggleSelectView(ImageView imageView) {
+        // 清除当前光标焦点
+        View currentFocus = getCurrentFocus();
+        if (currentFocus != null) {
+            currentFocus.clearFocus();
+        }
+        if (selectedView == imageView) {
+            // 如果当前点击的 ImageView 已经是选中状态，
+            // 显示查看大图或删除
+            showImageMenu(imageView);
+        } else {
+            // 如果有其他视图被选中，先取消它的选中状态
+            if (selectedView != null) {
+                removeSelection();
+            }
+            // 选中当前点击的 ImageView
+            selectView(imageView);
+            //
+        }
+    }
+
+    private void showImageMenu(ImageView imageView) {
+        PopupMenu popupMenu = new PopupMenu(this, imageView, Gravity.END);
+        popupMenu.getMenuInflater().inflate(R.menu.image_menu, popupMenu.getMenu());
+        popupMenu.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.action_view_image) {
+                // 获取ImageView中的图像资源
+                Drawable drawable = imageView.getDrawable();
+                if (drawable != null) {
+                    // 将drawable转换为Bitmap，在Dialog中显示大图
+                    Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+                    Dialog dialog = new Dialog(this);
+                    dialog.setContentView(R.layout.dialog_view_image);
+                    ImageView imageViewShow = dialog.findViewById(R.id.ivImageShow);
+                    imageViewShow.setImageBitmap(bitmap);
+                    dialog.setCancelable(true);
+                    dialog.setCanceledOnTouchOutside(true);
+
+                    // 显示Dialog
+                    dialog.show();
+                }
+                return true;
+            } else if (id == R.id.action_delete) {
+                if (selectedView != null) {
+                    // 删除视图
+                    ivContent.removeView(selectedView);
+                    removeSelection();
+                    int index = ivContent.indexOfChild(selectedView);
+                    // 合并相邻的 EditText
+                    if (index - 1 > 0 && ivContent.getChildAt(index - 1) instanceof EditText) {
+                        EditText editText = (EditText) ivContent.getChildAt(index + 1);
+                        EditText previousEditText = (EditText) ivContent.getChildAt(index - 1);
+                        int new_cursor_pos = previousEditText.getText().length();
+                        previousEditText.append("\n" + editText.getText().toString());
+                        ivContent.removeView(editText);
+                        previousEditText.requestFocus();
+                        previousEditText.setSelection(new_cursor_pos);
+                    }
+                    else {
+                        EditText editText = (EditText) ivContent.getChildAt(index + 1);
+                        editText.requestFocus();
+                    }
+                }
+                return true;
+            }
+            return false;
+        });
+        popupMenu.show();
     }
 
     //插入数据
     private void insertData(String title) {
         ContentValues cv = new ContentValues();
         cv.put(DatabaseHelper.TITLE,title);
-        cv.put(DatabaseHelper.TIME, Utils.getTimeStr());
+
+        // 获取当前时间
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss", Locale.getDefault());
+        currentTime = sdf.format(new Date());
+
+        cv.put(DatabaseHelper.TIME, currentTime);
         cv.put(DatabaseHelper.TAG,Tag);
         Gson gson = new Gson();
         String structArrayJson = gson.toJson(noteItemList);
@@ -587,14 +770,23 @@ public class AddNoteActivity extends BaseActivity {
             PlayerView playerView = new PlayerView(this);
             playerView.setPlayer(player);
             playerView.setTag(copy);
+            playerView.setPadding(5,5,5,5);
+            // 创建并设置布局参数
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            layoutParams.setMargins(marginInPx,0,marginInPx,0);
+            playerView.setLayoutParams(layoutParams);
+
 
             // 设置要播放的媒体=====
             MediaItem mediaItem = MediaItem.fromUri(copy);
             player.setMediaItem(mediaItem);
             //mediaPlayer.prepareAsync();
             player.prepare();
-            player.play();
-            ivContent.addView(playerView);
+            //player.play();
+            addAudioView(playerView);
         }
         catch(Exception e)
         {
@@ -602,6 +794,112 @@ public class AddNoteActivity extends BaseActivity {
         }
         saveFileToLocalInternalStorage(uri);
         audioList.add(audioUrl.toString());
+    }
+
+    private void addAudioView(PlayerView playerView) {
+        View focusedView = getCurrentFocus();//当前edittext
+        if (focusedView instanceof EditText) {
+            EditText focusedEditText = (EditText) focusedView;
+            int position = ivContent.indexOfChild(focusedEditText);
+            int cursorPosition = focusedEditText.getSelectionStart();
+            int last_index;
+            // 预处理，如果光标位于空行则删除空行
+            // 获取当前 EditText 的文本
+            String currentText = focusedEditText.getText().toString();
+            // 检查光标前后是否有换行符
+            if (currentText.length() > 1 && currentText.charAt(cursorPosition - 1) == '\n' && currentText.charAt(cursorPosition) == '\n') {
+                // 删除光标前的一个换行符
+                currentText = currentText.substring(0, cursorPosition - 1) + currentText.substring(cursorPosition);
+                focusedEditText.setText(currentText);
+                // 更新光标位置
+                focusedEditText.setSelection(cursorPosition - 1);
+            }
+
+            if(focusedEditText == etTitle) // 如果光标在标题，直接添加到开头
+            {
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 1 > last_index) {
+                    ivContent.addView(playerView);
+                }
+                else {
+                    ivContent.addView(playerView, position + 1);
+                }
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 2 > last_index) {
+                    addEditText(-1);
+                }
+                else {
+                    addEditText(position + 2);
+                }
+            }
+            else if (focusedEditText.getText().toString().isEmpty()) { //当前edit为空，先删除
+                ivContent.removeView(focusedEditText);
+                last_index = ivContent.getChildCount() - 1;
+                if(position > last_index) {
+                    ivContent.addView(playerView);
+                }
+                else {
+                    ivContent.addView(playerView, position);
+                }
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 1 > last_index) {
+                    addEditText(-1);
+                }
+                else {
+                    addEditText(position + 1);
+                }
+            } else if (cursorPosition == 0) {
+                // 光标在开头,在当前
+                ivContent.addView(playerView, position);
+            } else if (cursorPosition == focusedEditText.getText().length()) {
+                // 光标在结尾
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 1 > last_index) {
+                    ivContent.addView(playerView);
+                }
+                else {
+                    ivContent.addView(playerView, position + 1);
+                }
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 2 > last_index) {
+                    addEditText(-1);
+                }
+                else {
+                    addEditText(position + 2);
+                }
+            } else {
+                // 光标在中间，分裂edittext，图片加在中间
+                String textBeforeCursor = focusedEditText.getText().toString().substring(0, cursorPosition);
+                String textAfterCursor = focusedEditText.getText().toString().substring(cursorPosition);
+                focusedEditText.setText(textBeforeCursor);
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 1 > last_index) {
+                    ivContent.addView(playerView);
+                }
+                else {
+                    ivContent.addView(playerView, position + 1);
+                }
+                last_index = ivContent.getChildCount() - 1;
+                if(position + 2 > last_index) {
+                    addEditTextWithText(textAfterCursor, -1);
+                }
+                else {
+                    addEditTextWithText(textAfterCursor, position + 2);
+                }
+            }
+            // 为 ImageView 设置点击选中事件
+            playerView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // 点击时选中
+                    toggleSelectView((ImageView) v);
+                }
+            });
+        }
+        else {
+            ivContent.addView(playerView);
+            addEditText(-1);
+        }
     }
     private void stopRecord(){
         if(mr != null){
@@ -690,6 +988,7 @@ public class AddNoteActivity extends BaseActivity {
         }
     }
 
+    //选中edittext情况下
     private class CustomOnKeyListener implements View.OnKeyListener {
         private EditText editText;
 
@@ -714,14 +1013,21 @@ public class AddNoteActivity extends BaseActivity {
                                 // 合并相邻的 EditText
                                 if (index - 1 > 1 && ivContent.getChildAt(index - 2) instanceof EditText) {
                                     EditText previousEditText = (EditText) ivContent.getChildAt(index - 2);
+                                    int new_cursor_pos = previousEditText.getText().length();
                                     previousEditText.append("\n" + editText.getText().toString());
                                     ivContent.removeView(editText);
                                     previousEditText.requestFocus();
-                                    previousEditText.setSelection(previousEditText.getText().length());
+                                    previousEditText.setSelection(new_cursor_pos);
                                 }
                             } else {
                                 // 选中视图
                                 selectView(viewToBeSelected);
+                                // 如果现在edittext是空则删除
+                                //TODO
+//                                View focusedView = getCurrentFocus();//当前edittext
+//                                if (focusedView instanceof EditText) {
+//                                    ivContent.removeView(focusedView);
+//                                }
                             }
                         }
                         return true;

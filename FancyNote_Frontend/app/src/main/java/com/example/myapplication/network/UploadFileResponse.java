@@ -14,11 +14,11 @@ public class UploadFileResponse {
         this.success = success;
     }
 
-    public String getAvatarUrl() {
+    public String getNew_file_url() {
         return new_file_url;
     }
 
-    public void setAvatarUrl(String fileUrl) {
+    public void setNew_file_url(String fileUrl) {
         this.new_file_url = fileUrl;
     }
 

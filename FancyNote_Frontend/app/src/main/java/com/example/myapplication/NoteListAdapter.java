@@ -41,8 +41,8 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.NoteLi
     @Override
     public void onBindViewHolder(NoteListViewHolder holder, int position) {
         final Note note = noteList.get(position);
-        holder.tvTitle.setText( "标题:"+note.getTitle());
-        holder.tvContent.setText("内容:"+note.getAbstract());
+        holder.tvTitle.setText(note.getTitle());
+        holder.tvContent.setText(note.getAbstract());
         holder.tvTime.setText(note.getTime());
 //        if (!TextUtils.isEmpty(note.getVideoPath())){
 //            holder.ivPic.setImageBitmap(getVideoImage(note.getVideoPath(),100,100, MediaStore.Images.Thumbnails.MICRO_KIND));
@@ -71,8 +71,7 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.NoteLi
 //    }
 
     class NoteListViewHolder extends RecyclerView.ViewHolder {
-        TextView tvTitle,tvAuthor,tvContent, tvTime;
-        ImageView ivPic;
+        TextView tvTitle,tvContent, tvTime;
         //View itemView;
 
         public NoteListViewHolder(View itemView) {
@@ -83,7 +82,6 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.NoteLi
             tvTitle = (TextView) itemView.findViewById(R.id.tvTitle);
             tvContent=(TextView) itemView.findViewById(R.id.tvContent);
             tvTime = (TextView) itemView.findViewById(R.id.tvTime);
-            ivPic = (ImageView) itemView.findViewById(R.id.ivPic);
         }
     }
 }

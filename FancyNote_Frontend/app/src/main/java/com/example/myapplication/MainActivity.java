@@ -2,10 +2,12 @@ package com.example.myapplication;
 
 import static com.example.myapplication.NoteItem.TYPE_TEXT;
 
+import android.Manifest;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
@@ -15,6 +17,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -28,7 +32,6 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SearchView;
@@ -36,19 +39,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.resource.bitmap.CircleCrop;
 import com.bumptech.glide.request.RequestOptions;
-import com.example.myapplication.BaseActivity;
-import com.example.myapplication.R;
-import com.example.myapplication.Utils;
-import com.example.myapplication.NoteListAdapter;
-import com.example.myapplication.DatabaseHelper;
-import com.example.myapplication.Note;
-import com.example.myapplication.MyDecoration;
 import com.example.myapplication.network.ApiClient;
 import com.example.myapplication.network.ApiService;
 import com.example.myapplication.network.LogoutResponse;
-import com.example.myapplication.network.SignupResponse;
 import com.example.myapplication.network.UploadAvatarResponse;
 import com.example.myapplication.ui.theme.CircleWithBorderTransformation;
 import com.google.android.material.navigation.NavigationView;
@@ -143,7 +137,14 @@ public class MainActivity extends BaseActivity {
     }
 
     private void initLoggedViews() {
-        // Initialize the image picker launcher
+        //获取权限
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.READ_MEDIA_IMAGES}, 200);
+        }
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 200);
+        }
+
         pickImageLauncher = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
             if (uri != null) {
                 selectedImageUri = uri;
@@ -373,9 +374,9 @@ public class MainActivity extends BaseActivity {
 
     private void viewAvatar() {
         Dialog dialog = new Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-        dialog.setContentView(R.layout.dialog_view_avatar);
+        dialog.setContentView(R.layout.dialog_view_image);
 
-        ImageView ivAvatar = dialog.findViewById(R.id.ivAvatar);
+        ImageView ivAvatar = dialog.findViewById(R.id.ivImageShow);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
             loadImageWithGlide(avatarUrl, ivAvatar);
         } else {
@@ -457,29 +458,15 @@ public class MainActivity extends BaseActivity {
             String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
             String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
             String tag=cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
-            String Abstract="";
             Gson gson = new Gson();
             Type type = new TypeToken<List<NoteItem>>(){}.getType();
             ArrayList<NoteItem> structArray = gson.fromJson(content, type);
-            for (int i = 0; i < structArray.size(); i++) {
-                NoteItem noteItem = structArray.get(i);
-                if (noteItem.getType() == TYPE_TEXT) {
-                    if(noteItem.getcontent().length()<15){
-                        Abstract=noteItem.getcontent();
-                    }
-                    else{
-                        Abstract=noteItem.getcontent().substring(0,14)+"...";
-                    }
-
-                }
-            }
             Note note = new Note();
             note.setId(id);
             note.setTitle(title);
             note.setTime(time);
             note.setTag(tag);
             note.setContent(structArray);
-            note.setAbstract(Abstract);
             noteList.add(note);
         }
         cursor.close();
@@ -493,22 +480,9 @@ public class MainActivity extends BaseActivity {
             String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
             String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
             String tag=cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
-            String Abstract="";
             Gson gson = new Gson();
             Type type = new TypeToken<List<NoteItem>>(){}.getType();
             ArrayList<NoteItem> structArray = gson.fromJson(content, type);
-            for (int i = 0; i < structArray.size(); i++) {
-                NoteItem noteItem = structArray.get(i);
-                if (noteItem.getType() == TYPE_TEXT) {
-                    if(noteItem.getcontent().length()<15){
-                        Abstract=noteItem.getcontent();
-                    }
-                    else{
-                        Abstract=noteItem.getcontent().substring(0,14)+"...";
-                    }
-
-                }
-            }
             if(String.valueOf(Tag).equals(tag)) {
                 Note note = new Note();
                 note.setId(id);
@@ -516,7 +490,6 @@ public class MainActivity extends BaseActivity {
                 note.setContent(structArray);
                 note.setTime(time);
                 note.setTag(tag);
-                note.setAbstract(Abstract);
                 noteList.add(note);
             }
         }
@@ -532,28 +505,12 @@ public class MainActivity extends BaseActivity {
     private void searchNotes(String text) {
         // 假设你使用Room数据库
         List<Note> tmpList = new ArrayList<>();
-        String Abstract="";
         for(int i=0;i<noteList.size();i++) {
             ArrayList<NoteItem> content = noteList.get(i).getContent();
             for (int j = 0; j < content.size(); j++) {
                 NoteItem noteItem = content.get(j);
                 if (noteItem.getType() == TYPE_TEXT) {
                     if(noteItem.getcontent().contains(text)){
-                        int now=noteItem.getcontent().indexOf(text);
-                        if(now<7&&now+text.length()+7<=noteItem.getcontent().length()){
-                            Abstract=noteItem.getcontent().substring(0,now+text.length()+7)+"...";
-                        }
-                        else if(now<7&&now+text.length()+7>noteItem.getcontent().length()){
-                            Abstract=noteItem.getcontent();
-                        }
-                        else if(now>=7&&now+text.length()+7<=noteItem.getcontent().length()){
-                            Abstract="..."+noteItem.getcontent().substring(now-7,now+text.length()+7)+"...";
-                        }
-                        else if(now>=7&&now+text.length()+7>noteItem.getcontent().length()){
-                            Abstract="..."+noteItem.getcontent().substring(now-7,noteItem.getcontent().length()-1);
-                        }
-                        Abstract=noteItem.getcontent().substring(now-7,now+text.length());
-                        noteList.get(i).setAbstract(Abstract);
                         tmpList.add(noteList.get(i));
                         break;
                     }
@@ -568,8 +525,6 @@ public class MainActivity extends BaseActivity {
         //添加分隔线
         rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
     }
-
-
 
     @Override
     public void onClick(View v) {

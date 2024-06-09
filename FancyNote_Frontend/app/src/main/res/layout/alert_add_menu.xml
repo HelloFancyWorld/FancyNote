@@ -24,13 +24,4 @@
         android:text="@string/cancel"
         android:textSize="16sp" />
     <View style="@style/divider" />
-
-    <TextView
-        android:id="@+id/tv_author"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:gravity="center"
-        android:text="@string/setting"
-        android:textSize="16sp"
-        />
 </LinearLayout>

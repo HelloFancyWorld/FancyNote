@@ -7,7 +7,6 @@ public class Note implements Serializable {
     private int id;
     private int account;
     private String title;
-    private String Abstract;
     private ArrayList<NoteItem> content;
     private String time;
     private String imagePath;
@@ -49,12 +48,29 @@ public class Note implements Serializable {
         this.time = time;
     }
     public String getAbstract() {
+        //摘要：第一个edittext的前两行
+        String Abstract = "<空>";
+        for (NoteItem item : content) {
+            if (item.getType() == NoteItem.TYPE_TEXT) {
+                String textContent = item.getcontent();
+                // Return the first ten characters or the entire string if it's shorter
+                Abstract = textContent;
+                return Abstract;
+            }
+        }
+        for (NoteItem item : content) {
+            if (item.getType() == NoteItem.TYPE_IMAGE) {
+                Abstract = "<图片>";
+                return Abstract;
+            }
+            else {
+                Abstract = "<音频>";
+                return Abstract;
+            }
+        }
         return Abstract;
     }
 
-    public void setAbstract(String Abstract) {
-        this.Abstract = Abstract;
-    }
     public String getTag() {
         return tag;
     }

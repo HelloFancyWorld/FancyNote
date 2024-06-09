@@ -32,7 +32,7 @@
         android:layout_below="@+id/toolbar"
         android:id="@+id/scroll"
         android:layout_marginTop="1dp"
-        android:layout_marginBottom="-18dp">
+        android:layout_marginBottom="3dp">
 
 
         <LinearLayout
@@ -60,30 +60,43 @@
     <LinearLayout
         android:id="@+id/llBottom"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
+        android:layout_height="40dp"
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="10dp"
-        android:orientation="horizontal">
+        android:orientation="vertical"
+        >
 
-        <TextView
-            android:id="@+id/tvImage"
-            style="@style/add_new_note_menu"
-            android:text="图片" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/darker_gray" />
 
-        <TextView
-            android:id="@+id/tvCancel"
-            style="@style/add_new_note_menu"
-            android:text="取消" />
+        <LinearLayout
+            android:layout_marginTop="5dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tvAudio"
-            style="@style/add_new_note_menu"
-            android:text="音频" />
+            <ImageView
+                android:id="@+id/ivImage"
+                style="@style/add_new_note_menu"
+                android:src="@drawable/image" />
 
-        <TextView
-            android:id="@+id/tvSave"
-            style="@style/add_new_note_menu"
-            android:layout_marginRight="16dp"
-            android:text="保存" />
+            <ImageView
+                android:id="@+id/ivAudio"
+                style="@style/add_new_note_menu"
+                android:src="@drawable/audio"/>
+            <ImageView
+                android:id="@+id/ivUpload"
+                style="@style/add_new_note_menu"
+                android:src="@drawable/upload"/>
+
+            <ImageView
+                android:id="@+id/ivDownload"
+                style="@style/add_new_note_menu"
+                android:layout_marginRight="16dp"
+                android:src="@drawable/download"/>
+        </LinearLayout>
+
     </LinearLayout>
 </RelativeLayout>
