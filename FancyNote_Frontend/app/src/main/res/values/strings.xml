@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FancyNote</string>
-    <string name="note_list_title">我的备忘</string>
+    <string name="note_list_title">我的笔记</string>
     <string name="add_new_note">+</string>
     <string name="show_list">≡</string>
     <string name="add_menu_title">选择操作</string>
@@ -9,9 +9,9 @@
     <string name="note_type_image">图文</string>
     <string name="note_type_video">视频</string>
     <string name="cancel">取消</string>
-    <string name="add_new_note_title">添加新备忘</string>
-    <string name="note_detail_title">备忘详情</string>
-    <string name="text_add_new_note">添加新备忘</string>
+    <string name="add_new_note_title">添加新笔记</string>
+    <string name="note_detail_title">笔记详情</string>
+    <string name="text_add_new_note">添加新笔记</string>
     <string name="add_note_text_title">标题</string>
     <string name="add_note_text_hint">说说您现在的心情</string>
     <string name="setting">设置</string>

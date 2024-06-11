@@ -125,7 +125,7 @@ public class LoginActivity extends AppCompatActivity {
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
 
                         // 保存登录信息
-                        sharedPreferences.edit().putString("username", loginResponse.getUsername()).apply();
+                        sharedPreferences.edit().putString("nickname", loginResponse.getNickname()).apply();
                         sharedPreferences.edit().putString("email", loginResponse.getEmail()).apply();
                         sharedPreferences.edit().putString("avatar", loginResponse.getAvatar()).apply();
                         sharedPreferences.edit().putString("motto", loginResponse.getMotto()).apply();

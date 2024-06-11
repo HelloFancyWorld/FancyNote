@@ -44,3 +44,7 @@ class UserNoteAdmin(admin.ModelAdmin):
 admin.site.register(User_info)
 
 admin.site.register(ImageContent)
+
+admin.site.register(AudioContent)
+
+admin.site.register(Content)

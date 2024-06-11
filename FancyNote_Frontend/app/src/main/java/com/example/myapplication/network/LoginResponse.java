@@ -3,7 +3,7 @@ package com.example.myapplication.network;
 public class LoginResponse {
     private boolean success;
     private String message;
-    private String username;
+    private String nickname;
     private String email;
     private String avatar;
     private String motto;
@@ -16,12 +16,12 @@ public class LoginResponse {
         return message;
     }
 
-    public String getUsername() {
-        return username;
+    public String getNickname() {
+        return nickname;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setNickname(String username) {
+        this.nickname = username;
     }
 
     public String getEmail() {

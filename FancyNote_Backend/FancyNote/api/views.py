@@ -10,8 +10,8 @@ from django.contrib.auth.models import User
 import json
 from django.middleware.csrf import get_token, rotate_token
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import UserNoteSerializer, ImageContentSerializer, AudioContentSerializer
-from .models import User_note, Content, ImageContent, AudioContent
+from .serializers import UserNoteSerializer, ImageContentSerializer, AudioContentSerializer, UserFolderSerializer
+from .models import User_note, Content, ImageContent, AudioContent, User_folder, User_info
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -55,9 +55,10 @@ def log_in(request):
                 response = JsonResponse({
                     'message': 'Login successful',
                     'success': True,
-                    'username': user.username,
+                    'nickname': user.user_info.nickname,
                     'email': user.email,
-                    'avatar_url': (user.user_info.avatar.url if user.user_info.avatar else None),
+                    'avatar': (user.user_info.avatar.url if user.user_info.avatar else None),
+                    'notes': [{'id': note.id, 'title': note.title, 'updated_at': note.updated_at} for note in user.user_note_set.all()],
                     'motto': user.user_info.motto
                 }, status=200)
                 return response
@@ -141,6 +142,20 @@ class UserNoteViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # 过滤查询集以仅包含当前请求用户的笔记
         return User_note.objects.filter(user=self.request.user)
+
+
+class UserFolderViewSet(viewsets.ModelViewSet):
+    queryset = User_folder.objects.all()
+    serializer_class = UserFolderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # 手动设置'user'字段为当前请求的用户
+        serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        # 过滤查询集以仅包含当前请求用户的文件夹
+        return User_folder.objects.filter(user=self.request.user)
 
 
 @login_required

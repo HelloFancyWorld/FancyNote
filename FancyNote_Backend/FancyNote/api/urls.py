@@ -2,9 +2,10 @@ from django.urls import path, include
 from .views import log_in, log_out, sign_up, get_csrf_token, change_avatar, edit_info
 
 from rest_framework.routers import DefaultRouter
-from .views import UserNoteViewSet, ContentUploadView
+from .views import UserNoteViewSet, ContentUploadView, UserFolderViewSet
 router = DefaultRouter()
 router.register(r'notes', UserNoteViewSet)
+router.register(r'folder', UserFolderViewSet)
 
 
 urlpatterns = [

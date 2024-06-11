@@ -38,7 +38,8 @@
             android:parentActivityName="com.example.myapplication.MainActivity"/>
         <activity
             android:name=".NoteDetailActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.example.myapplication.MainActivity"/>
         <activity
             android:name=".RegisterActivity"
             android:screenOrientation="portrait">

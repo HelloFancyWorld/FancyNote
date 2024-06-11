@@ -50,7 +50,7 @@
                 android:layout_marginRight="16dp"
                 android:layout_marginBottom="8dp"
                 android:background="@null"
-                android:gravity="top"
+                android:gravity="top|center_vertical"
                 android:hint="@string/add_note_text_title"
                 android:textSize="28sp"
                 android:textStyle="bold" />
@@ -92,10 +92,10 @@
                 android:src="@drawable/upload"/>
 
             <ImageView
-                android:id="@+id/ivDownload"
+                android:id="@+id/ivDelete"
                 style="@style/add_new_note_menu"
                 android:layout_marginRight="16dp"
-                android:src="@drawable/download"/>
+                android:src="@drawable/delete"/>
         </LinearLayout>
 
     </LinearLayout>

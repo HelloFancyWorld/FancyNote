@@ -1,13 +1,12 @@
 package com.example.myapplication;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Objects;
 
-public class Note implements Serializable {
+public class NoteRemote implements Serializable {
 
     private int id;
     private String title;
-    private ArrayList<NoteItem> content;
+    private ArrayList<NoteContent> contents;
     private String created_at;
     private String updated_at;
 
@@ -27,12 +26,12 @@ public class Note implements Serializable {
         this.title = title;
     }
 
-    public ArrayList<NoteItem> getContent() {
-        return content;
+    public ArrayList<NoteContent> getContents() {
+        return contents;
     }
 
-    public void setContent(ArrayList<NoteItem> content) {
-        this.content = content;
+    public void setContents(ArrayList<NoteContent> contents) {
+        this.contents = contents;
     }
 
     public String getCreated_at() {
@@ -54,15 +53,15 @@ public class Note implements Serializable {
     public String getAbstract() {
         //摘要：第一个edittext的前两行
         String Abstract = "<空>";
-        for (NoteItem item : content) {
+        for (NoteContent item : contents) {
             if (item.getType() == NoteItem.TYPE_TEXT) {
-                if(Objects.equals(item.getContent(), ""))
-                    continue;
-                Abstract = item.getContent();
+                String textContent = item.getTextContent().getText();
+                // Return the first ten characters or the entire string if it's shorter
+                Abstract = textContent;
                 return Abstract;
             }
         }
-        for (NoteItem item : content) {
+        for (NoteContent item : contents) {
             if (item.getType() == NoteItem.TYPE_IMAGE) {
                 Abstract = "<图片>";
                 return Abstract;

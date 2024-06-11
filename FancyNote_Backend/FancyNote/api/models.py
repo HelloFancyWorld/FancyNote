@@ -36,7 +36,7 @@ def audio_path(instance, filename):
 class User_info(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     nickname = models.CharField(
-        max_length=30, default='', blank=True, null=True)
+        max_length=30, default='取个昵称吧', blank=True, null=True)
     avatar = models.ImageField(
         upload_to=user_avatar_path, max_length=100, blank=True, null=True)
     motto = models.CharField(
@@ -44,12 +44,22 @@ class User_info(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class User_note(models.Model):
+class User_folder(models.Model):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
-    created_at = models.DateTimeField()
-    updated_at = models.DateTimeField()
+    created_at = models.CharField(max_length=255)
+    updated_at = models.CharField(max_length=255)
+
+
+class User_note(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    folder = models.ForeignKey(
+        User_folder, on_delete=models.CASCADE, null=True, blank=True)
+    title = models.CharField(max_length=255)
+    created_at = models.CharField(max_length=255)
+    updated_at = models.CharField(max_length=255)
 
 
 class Content(models.Model):
