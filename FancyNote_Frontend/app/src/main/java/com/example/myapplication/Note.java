@@ -7,6 +7,7 @@ public class Note implements Serializable {
 
     private int id;
     private String title;
+    private String Tag;
     private ArrayList<NoteItem> content;
     private String created_at;
     private String updated_at;
@@ -25,6 +26,13 @@ public class Note implements Serializable {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+    public String getTag() {
+        return Tag;
+    }
+
+    public void setTag(String Tag) {
+        this.Tag = Tag;
     }
 
     public ArrayList<NoteItem> getContent() {
