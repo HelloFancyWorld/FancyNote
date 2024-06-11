@@ -325,7 +325,7 @@ public class AddNoteActivity extends BaseActivity {
                     Toast.makeText(AddNoteActivity.this, "Failed to edit note", Toast.LENGTH_SHORT).show();
                 }
             }
-
+   
             @Override
             public void onFailure(Call<NoteResponse> call, Throwable t) {
                 // Hide loading dialog or UI indication
