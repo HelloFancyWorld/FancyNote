@@ -31,4 +31,8 @@
         <item name="android:textColor">@color/colorPrimary</item>
         <item name="android:layout_marginLeft">16dp</item>
     </style>
+    <style name="myNavigationDrawerStyle" >
+        <item name="android:textSize">20sp</item>
+        <item name="android:gravity">center</item>
+    </style>
 </resources>

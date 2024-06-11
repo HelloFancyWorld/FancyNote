@@ -8,12 +8,14 @@ import java.util.Map;
 
 public class NoteRequest {
     private String title;
+    private String tag;
     private String created_at;
     private String updated_at;
     private List<Map<String, Object>> contents;
 
-    public NoteRequest(String title, String created_at, String updated_at, List<Map<String, Object>> contents) {
+    public NoteRequest(String title, String tag,String created_at, String updated_at, List<Map<String, Object>> contents) {
         this.title = title;
+        this.tag=tag;
         this.created_at = created_at;
         this.updated_at = updated_at;
         this.contents = contents;

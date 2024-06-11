@@ -97,7 +97,7 @@ public class AddNoteActivity extends BaseActivity {
     private ActivityResultLauncher<Intent> matisseLauncher;
     private List<Uri> selectedUris;
     private static final String TAG = "MyActivityTag";
-    private EditText etTitle;
+    private EditText etTitle,etTag;
     private EditText etContent;//内容
     private ImageView ivImage, ivAudio, ivUpload;//图片,音频,上传
     private TextView tvComplete; //完成
@@ -106,7 +106,7 @@ public class AddNoteActivity extends BaseActivity {
     private VideoView vvContent;
     private Uri audioUrl;
     private ExoPlayer player;
-    private String Tag;
+    private String Tag="";
     private Toolbar toolbar;
     private File soundFile;
 
@@ -148,6 +148,10 @@ public class AddNoteActivity extends BaseActivity {
         getSupportActionBar().setTitle("");
 
         etTitle = (EditText) findViewById(R.id.etTitle);
+        etTag = (EditText) findViewById(R.id.etTag);
+        if(Tag!=""){
+            etTag.setText(Tag);
+        }
         //etContent = (EditText) findViewById(R.id.etContent);
         ivImage = (ImageView) findViewById(R.id.ivImage);
         ivAudio = (ImageView) findViewById(R.id.ivAudio);
@@ -232,6 +236,7 @@ public class AddNoteActivity extends BaseActivity {
             }
             else if(v.getId()==R.id.tvComplete) {
                 String title = etTitle.getText().toString().trim();
+                String tag = etTag.getText().toString().trim();
                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                 traverseViews(containerLayout);
@@ -297,6 +302,7 @@ public class AddNoteActivity extends BaseActivity {
 
         // Create EditNoteRequest object
         String title = etTitle.getText().toString().trim();
+        String tag= etTag.getText().toString().trim();
         // 获取当前时间
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss", Locale.getDefault());
         currentTime = sdf.format(new Date());
@@ -307,7 +313,7 @@ public class AddNoteActivity extends BaseActivity {
             noteItemMaps.add(item.toMap());
         }
 
-        NoteRequest noteRequest = new NoteRequest(title, currentTime, currentTime, noteItemMaps);
+        NoteRequest noteRequest = new NoteRequest(title, tag,currentTime, currentTime, noteItemMaps);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(noteRequest);
@@ -401,7 +407,7 @@ public class AddNoteActivity extends BaseActivity {
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
-        for (int i = 1; i < parent.getChildCount(); i++) { //从1开始不计标题
+        for (int i = 2; i < parent.getChildCount(); i++) { //从2开始不计标题和标签
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
                 Object tag = child.getTag();
