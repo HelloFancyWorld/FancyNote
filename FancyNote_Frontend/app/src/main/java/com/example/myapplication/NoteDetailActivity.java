@@ -95,7 +95,7 @@ public class NoteDetailActivity extends BaseActivity {
     private ActivityResultLauncher<Intent> matisseLauncher;
     private List<Uri> selectedUris;
     private static final String TAG = "MyActivityTag";
-    private EditText etTitle;
+    private EditText etTitle,etTag;
     private EditText etContent;// 内容
     private List<Integer> existedIDs = new ArrayList<>(); //已有的ID
     private ImageView ivImage, ivAudio, ivUpload, ivDelete;// 图片,音频,上传,删除
@@ -150,6 +150,7 @@ public class NoteDetailActivity extends BaseActivity {
         getSupportActionBar().setTitle("");
 
         etTitle = (EditText) findViewById(R.id.etTitle);
+        etTag= (EditText) findViewById(R.id.etTag);
         ivImage = (ImageView) findViewById(R.id.ivImage);
         ivAudio = (ImageView) findViewById(R.id.ivAudio);
         ivUpload = (ImageView) findViewById(R.id.ivUpload);
@@ -431,6 +432,7 @@ public class NoteDetailActivity extends BaseActivity {
         String currentTime = sdf.format(new Date());
         // Create EditNoteRequest object
         String title = etTitle.getText().toString().trim();
+        String tag= etTag.getText().toString().trim();
         String created_at = note.getCreated_at();
         int id = note.getId();
 
@@ -440,7 +442,7 @@ public class NoteDetailActivity extends BaseActivity {
             noteItemMaps.add(item.toMap());
         }
 
-        NoteRequest noteRequest = new NoteRequest(title, created_at, currentTime, noteItemMaps);
+        NoteRequest noteRequest = new NoteRequest(title, tag,created_at, currentTime, noteItemMaps);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(noteRequest);
@@ -563,7 +565,7 @@ public class NoteDetailActivity extends BaseActivity {
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
-        for (int i = 1; i < parent.getChildCount(); i++) { // 从1开始不计标题
+        for (int i = 2; i < parent.getChildCount(); i++) { // 从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
                 Object tag = child.getTag();

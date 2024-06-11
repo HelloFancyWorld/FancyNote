@@ -17,7 +17,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:orientation="horizontal">
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
@@ -57,16 +57,16 @@
                 android:textColor="@color/white"
                 android:textSize="28sp" />
 
-            <SearchView
+            <ImageView
                 android:id="@+id/tv_search"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:layout_gravity="right"
-                android:gravity="center"
-                android:paddingLeft="16dp"
-                android:paddingRight="16dp"
-                android:textColor="@color/white"
-                android:textSize="28sp" />
+                android:gravity="right"
+                android:scaleType="fitCenter"
+                android:src="@drawable/search"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="16dp"/>
         </androidx.appcompat.widget.Toolbar>
 
         <androidx.recyclerview.widget.RecyclerView
@@ -237,8 +237,9 @@
             android:id="@+id/nav_view"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:layout_gravity="right"
-            app:menu="@xml/drawer_menu" />
+            app:theme="@style/myNavigationDrawerStyle"
+            android:layout_gravity="end"
+            app:menu="@menu/drawer_menu" />
     </androidx.drawerlayout.widget.DrawerLayout>
 
 

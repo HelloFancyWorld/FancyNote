@@ -30,6 +30,7 @@ import androidx.appcompat.widget.Toolbar;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
@@ -73,12 +74,12 @@ public class MainActivity extends BaseActivity {
     private TextView tv_add, tv_list;// 右上角的添加
     private RecyclerView rcvNoteList;// 备忘列表
     private DrawerLayout drawer;
-    public int Tag = 0;
+    public String Tag;
     private NoteListAdapter mAdapter;
     private static final String TAG = "MyActivityTag";
     private SearchView searchView;
     private NavigationView navigationView;
-    private ImageView iv_avatar;
+    private ImageView iv_avatar,tv_search;
     private ImageView user_info_avatar;
     private NavigationView user_info;
     private Button signup_button, login_button, logout_button, editinfo_button;
@@ -94,6 +95,7 @@ public class MainActivity extends BaseActivity {
     // 用于头像选择
     private ActivityResultLauncher<String> pickImageLauncher;
     private Uri selectedImageUri;
+    private List<String> TagList=new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -150,7 +152,7 @@ public class MainActivity extends BaseActivity {
 
         if (!isLoggedIn) {
             noteList.clear();
-            queryNotesLocal();
+            //queryNotesLocal();
         } else {
             noteList.clear();
             queryNotes();
@@ -308,6 +310,7 @@ public class MainActivity extends BaseActivity {
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         tv_add = (TextView) findViewById(R.id.tv_add);
         tv_list = (TextView) findViewById(R.id.tv_list);
+        tv_search=findViewById(R.id.tv_search);
         drawer = findViewById(R.id.drawer_layout);
 
         user_info = findViewById(R.id.user_info);
@@ -331,6 +334,14 @@ public class MainActivity extends BaseActivity {
             }
         });
 
+        tv_search.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, SearchActivity.class);
+                intent.putExtra("note", Tag);
+                startActivity(intent);
+            }
+        });
         user_info_avatar = findViewById(R.id.user_info_avatar);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
             loadImageWithGlide(avatarUrl, user_info_avatar);
@@ -341,22 +352,7 @@ public class MainActivity extends BaseActivity {
                     .into(user_info_avatar);
         }
 
-        searchView = findViewById(R.id.tv_search);
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                // 用户提交查询时调用
-                Log.i(TAG, "onCreate: " + query);
-                // searchNotes(query);
-                return true;
-            }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                // 查询文本改变时调用
-                return true;
-            }
-        });
         rcvNoteList = (RecyclerView) findViewById(R.id.rcvNoteList);
 
         tv_add.setOnClickListener(this);
@@ -369,18 +365,8 @@ public class MainActivity extends BaseActivity {
         navigationView = findViewById(R.id.nav_view);
 
         navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-
-            if (id == R.id.nav_first) {
-                Tag = 1;
-                // 处理第一个菜单项的点击
-            } else if (id == R.id.nav_second) {
-                // 处理第二个菜单项的点击
-                Tag = 2;
-            } else if (id == R.id.nav_third) {
-                // 处理第二个菜单项的点击
-                Tag = 3;
-            }
+            String id = item.getTitle().toString();
+            Tag=id;
             drawer.closeDrawer(GravityCompat.START);
             return true;
         });
@@ -529,6 +515,10 @@ public class MainActivity extends BaseActivity {
                     for(NoteRemote noteRemote: notes) {
                         Note note = new Note();
                         note.setId(noteRemote.getId());
+                        note.setTag(noteRemote.getTag());
+                        if(noteRemote.getTag()!=""){
+                            TagList.add(noteRemote.getTag());
+                        }
                         note.setTitle(noteRemote.getTitle());
                         note.setUpdated_at(noteRemote.getUpdated_at());
                         ArrayList<NoteContent> noteContents = new ArrayList<>();
@@ -613,6 +603,24 @@ public class MainActivity extends BaseActivity {
     public void onClick(View v) {
         showAddMenuDialog();
     }
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.drawer_menu, menu);
+
+        // 调用方法向菜单中添加字符串列表的项
+        addItemsToMenu(menu);
+
+        return true;
+    }
+    private void addItemsToMenu(Menu menu) {
+        // 假设你有一个字符串列表
+
+        // 遍历字符串列表，为每个字符串创建一个菜单项并添加到菜单中
+        for (int i = 0; i < TagList.size(); i++) {
+            String itemText = TagList.get(i);
+            menu.add(Menu.NONE, Menu.FIRST + i, Menu.NONE, itemText);
+        }
+    }
 
     // 显示添加新备忘的对话框
     private void showAddMenuDialog() {
@@ -625,45 +633,14 @@ public class MainActivity extends BaseActivity {
         tv_text.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (Tag == 0) {
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("请选择笔记类型")
-                            .setItems(new String[] { "学习笔记", "工作笔记", "生活笔记" }, new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    if (which == 0) {
-                                        // 用户选择添加音频
-                                        Tag = 1;
-                                        Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);
-                                        intent.putExtra("key", String.valueOf(Tag));
-                                        Tag = 0;
-                                        startActivity(intent);
-                                        alertDialog.dismiss();
-                                    } else if (which == 1) {
-                                        // 用户选择录音
-                                        Tag = 2;
-                                        Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);
-                                        intent.putExtra("key", String.valueOf(Tag));
-                                        Tag = 0;
-                                        startActivity(intent);
-                                        alertDialog.dismiss();
-                                    } else if (which == 2) {
-                                        Tag = 3;
-                                        Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);
-                                        intent.putExtra("key", String.valueOf(Tag));
-                                        Tag = 0;
-                                        startActivity(intent);
-                                        alertDialog.dismiss();
-                                    }
-                                }
-                            })
-                            .show();
-                } else {
+                    if(!isLoggedIn){
+                        Toast.makeText(MainActivity.this, "please log in", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);
                     intent.putExtra("key", Tag);
                     startActivity(intent);
                     alertDialog.dismiss();
-                }
             }
         });
         tv_cancel.setOnClickListener(new View.OnClickListener() {
