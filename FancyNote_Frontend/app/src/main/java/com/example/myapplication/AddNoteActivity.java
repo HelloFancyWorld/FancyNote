@@ -1,6 +1,7 @@
 package com.example.myapplication;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ContentResolver;
@@ -19,7 +20,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.InputType;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -30,6 +33,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -44,10 +48,12 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.AppLaunchChecker;
 import androidx.core.content.ContextCompat;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.media3.common.MediaItem;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
+import com.bumptech.glide.Glide;
 import com.example.myapplication.network.ApiClient;
 import com.example.myapplication.network.ApiService;
 import com.example.myapplication.network.NoteRequest;
@@ -72,6 +78,7 @@ import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -88,18 +95,24 @@ public class AddNoteActivity extends BaseActivity {
     //private static final int VIDEO_PICKER = 1002;
     private static final int REQUEST_CODE_CHOOSE = 23;
 
+    Note note;
+
+    private int ID;
+
     private String currentTime;
     private ArrayList<NoteItem> noteItemList = new ArrayList<>();
     List<String> imageList = new ArrayList<>();
     List<String> audioList = new ArrayList<>();
+    private LinearLayout.LayoutParams layoutParams;
     private static final int REQUEST_PICK_AUDIO = 24;
     private static final int REQUEST_RECORD_AUDIO = 25;
     private ActivityResultLauncher<Intent> matisseLauncher;
     private List<Uri> selectedUris;
+    private List<Integer> existedIDs = new ArrayList<>(); //已有的ID
     private static final String TAG = "MyActivityTag";
     private EditText etTitle,etTag;
     private EditText etContent;//内容
-    private ImageView ivImage, ivAudio, ivUpload;//图片,音频,上传
+    private ImageView ivImage, ivAudio, ivUpload, ivTag;//图片,音频,上传,标签
     private TextView tvComplete; //完成
     private LinearLayout ivContent;
     private ScrollView scrollView;
@@ -107,6 +120,7 @@ public class AddNoteActivity extends BaseActivity {
     private Uri audioUrl;
     private ExoPlayer player;
     private String Tag="";
+    private String currentTag = "";
     private Toolbar toolbar;
     private File soundFile;
 
@@ -148,14 +162,14 @@ public class AddNoteActivity extends BaseActivity {
         getSupportActionBar().setTitle("");
 
         etTitle = (EditText) findViewById(R.id.etTitle);
-        etTag = (EditText) findViewById(R.id.etTag);
-        if(Tag!=""){
-            etTag.setText(Tag);
-        }
+//        if(Tag!=""){
+//            etTag.setText(Tag);
+//        }
         //etContent = (EditText) findViewById(R.id.etContent);
         ivImage = (ImageView) findViewById(R.id.ivImage);
         ivAudio = (ImageView) findViewById(R.id.ivAudio);
         ivUpload = (ImageView) findViewById(R.id.ivUpload);
+        ivTag = (ImageView) findViewById(R.id.ivTag);
         ivContent = (LinearLayout) findViewById(R.id.linearLayout);
         scrollView = findViewById(R.id.scroll);
         ivContent = findViewById(R.id.linearLayout);
@@ -163,6 +177,7 @@ public class AddNoteActivity extends BaseActivity {
         ivImage.setOnClickListener(this);
         ivAudio.setOnClickListener(this);
         ivUpload.setOnClickListener(this);
+        ivTag.setOnClickListener(this);
         tvComplete.setOnClickListener(this);
         scrollView.setOnClickListener(this);
 
@@ -183,11 +198,20 @@ public class AddNoteActivity extends BaseActivity {
             public boolean onKey(View v, int keyCode, KeyEvent event) {
                 if (keyCode == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN) {
                     View view = ivContent.getChildAt(1);
-                    if(view instanceof EditText) {
+                    if(view instanceof TextView && !(view instanceof EditText)) { //有标签
+                        View view2 = ivContent.getChildAt(2);
+                        if(view2 instanceof EditText) {
+                            view2.requestFocus();
+                            ((EditText)view2).setSelection(0);
+                        }
+                        else {
+                            addEditText(1);
+                        }
+                    }
+                    else if(view instanceof EditText) {
                         view.requestFocus();
                         ((EditText)view).setSelection(0);
-                    }
-                    else {
+                    } else {
                         addEditText(1);
                     }
                     return true;  // Consume the event
@@ -222,13 +246,60 @@ public class AddNoteActivity extends BaseActivity {
                                 // 确定按钮被点击，执行上传操作
                                 String title = etTitle.getText().toString().trim();
                                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
-
                                 traverseViews(containerLayout);
                                 if (title.length() <= 0) {
                                     Toast.makeText(getApplicationContext(), "请输入标题", Toast.LENGTH_SHORT).show();
                                     return;
                                 }
-                                editNoteRequest();
+                                createNoteRequest(false);
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+            }
+            else if (v.getId()==R.id.ivTag) { //添加标签
+                // 创建一个EditText控件，用于输入标签
+                final EditText input = new EditText(this);
+                input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) }); // 限制输入长度为10
+
+                // 创建一个FrameLayout来包装EditText
+                FrameLayout container = new FrameLayout(this);
+                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT
+                );
+                params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
+                input.setLayoutParams(params);
+                container.addView(input);
+                // 创建并显示一个AlertDialog
+                new AlertDialog.Builder(this)
+                        .setTitle("添加标签")
+                        .setView(container)
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                currentTag = input.getText().toString();
+                                //先删除旧的
+                                LinearLayout tagsContainer = findViewById(R.id.linearLayout);
+                                View view = tagsContainer.getChildAt(1);
+                                if(view instanceof TextView && !(view instanceof EditText)) {
+                                    tagsContainer.removeView(view);
+                                }
+                                if (!currentTag.isEmpty()) {
+
+                                    TextView tagView = new TextView(AddNoteActivity.this);
+                                    LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                                            LinearLayout.LayoutParams.WRAP_CONTENT
+                                    );
+                                    layoutParams.setMargins(2*marginInPx,marginInPx/2,marginInPx,marginInPx/2);
+                                    tagView.setLayoutParams(layoutParams);
+                                    tagView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+                                    tagView.setText(currentTag);
+                                    tagView.setPadding(20, 20, 20, 20);
+                                    tagView.setBackgroundResource(R.drawable.image_border); // 设置标签的背景样式
+                                    tagsContainer.addView(tagView, 1);
+                                }
                             }
                         })
                         .setNegativeButton("取消", null)
@@ -236,7 +307,6 @@ public class AddNoteActivity extends BaseActivity {
             }
             else if(v.getId()==R.id.tvComplete) {
                 String title = etTitle.getText().toString().trim();
-                String tag = etTag.getText().toString().trim();
                 ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
 
                 traverseViews(containerLayout);
@@ -250,10 +320,7 @@ public class AddNoteActivity extends BaseActivity {
                     Toast.makeText(getApplicationContext(), "保存成功!", Toast.LENGTH_SHORT).show();
                     return;
                 }
-
-                editNoteRequest();
-                Toast.makeText(getApplicationContext(), "保存成功!", Toast.LENGTH_SHORT).show();
-                finish();
+                createNoteRequest(true);
             }
             else if(v.getId()==R.id.ivImage){
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
@@ -277,8 +344,8 @@ public class AddNoteActivity extends BaseActivity {
             else if(v.getId()==R.id.ivAudio){
                 checkPermission();
                 new AlertDialog.Builder(this)
-                        .setTitle("Select Action")
-                        .setItems(new String[]{"Add Audio", "Record Audio"}, new DialogInterface.OnClickListener() {
+                        .setTitle("选择操作")
+                        .setItems(new String[]{"选择本地音频", "录音"}, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (which == 0) {
@@ -294,7 +361,226 @@ public class AddNoteActivity extends BaseActivity {
             }
     }
 
-    public void editNoteRequest() {
+    private static boolean isEmulator() {
+        return (Build.FINGERPRINT.startsWith("generic") ||
+                Build.FINGERPRINT.startsWith("unknown") ||
+                Build.MODEL.contains("google_sdk") ||
+                Build.MODEL.toLowerCase().contains("droid4x") ||
+                Build.MODEL.contains("Emulator") ||
+                Build.MODEL.contains("Android SDK built for x86") ||
+                Build.MANUFACTURER.contains("Genymotion") ||
+                (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic")) ||
+                "google_sdk".equals(Build.PRODUCT) ||
+                (Settings.Secure.getString(FancyNote.getAppContext().getContentResolver(),
+                        Settings.Secure.ANDROID_ID) == null));
+    }
+    private static String getBaseUrl() {
+        if (isEmulator()) {
+            return "http://10.0.2.2:8000";
+        } else {
+            return "http://59.66.139.41:8000";
+        }
+    }
+
+    private void loadImageWithGlide(String relativeUrl, ImageView imageView) {
+        // 构建完整的 URL
+        String fullUrl = getBaseUrl() + relativeUrl;
+        Log.d("glide", fullUrl);
+
+        Glide.with(this)
+                .load(fullUrl)
+                .into(imageView);
+    }
+
+    // 读出数据添加到页面
+    private void setDataToView() {
+        etTitle.setText(note.getTitle());
+        if(!Objects.equals(currentTag, "")) {
+            TextView tagView = new TextView(AddNoteActivity.this);
+            layoutParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            layoutParams.setMargins(2*marginInPx,marginInPx/2,marginInPx,marginInPx/2);
+            tagView.setLayoutParams(layoutParams);
+            tagView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            tagView.setText(currentTag);
+            tagView.setPadding(20, 20, 20, 20);
+            tagView.setBackgroundResource(R.drawable.image_border); // 设置标签的背景样式
+            ivContent.addView(tagView);
+        }
+        for (int i = 0; i < note.getContent().size(); i++) {
+            NoteItem noteItem = note.getContent().get(i);
+            existedIDs.add(noteItem.getId());
+            if (noteItem.getType() == NoteItem.TYPE_TEXT) {
+                EditText editText = new EditText(this);
+                editText.setText(noteItem.getContent());
+
+                // 设置字体大小，以 sp 为单位
+                editText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+                editText.setBackground(null);
+
+                // 设置 EditText 的布局参数
+                layoutParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+                layoutParams.setMargins(marginInPx, 0, marginInPx, 0);
+                editText.setLayoutParams(layoutParams);
+
+                // 添加 TextWatcher 和 OnKeyListener
+                editText.addTextChangedListener(new AddNoteActivity.CustomTextWatcher());
+                editText.setOnKeyListener(new AddNoteActivity.CustomOnKeyListener(editText));
+
+                editText.setTag(noteItem);
+                // 为 EditText 设置 OnFocusChangeListener
+                editText.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+                    @Override
+                    public void onFocusChange(View v, boolean hasFocus) {
+                        if (hasFocus) {
+                            // 当 EditText 获得焦点时，取消现有的选中状态
+                            removeSelection();
+                        }
+                    }
+                });
+                // 将 EditText 添加到 LinearLayout
+                ivContent.addView(editText);
+            }
+            // 处理image
+            else if (noteItem.getType() == NoteItem.TYPE_IMAGE) {
+                ImageView imageView = new ImageView(this);
+                ;
+                imageView.setVisibility(View.VISIBLE);
+                imageList.add(noteItem.getContent());
+
+                loadImageWithGlide(noteItem.getContent(), imageView);
+                imageView.setAdjustViewBounds(true);
+                imageView.setPadding(5, 5, 5, 5);
+
+                // 创建并设置布局参数
+                layoutParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT);
+
+                layoutParams.setMargins(marginInPx, marginInPx/2, marginInPx, marginInPx/2);
+                imageView.setLayoutParams(layoutParams);
+
+                imageView.setTag(noteItem);
+                // 为 ImageView 设置点击选中事件
+                imageView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // 点击时选中
+                        toggleSelectView((View) v);
+                    }
+                });
+
+                ivContent.addView(imageView);
+            } else if (noteItem.getType() == NoteItem.TYPE_AUDIO) {
+                player = new ExoPlayer.Builder(this).build();
+                try {
+                    PlayerView playerView = new PlayerView(this);
+                    playerView.setPlayer(player);
+
+                    // 设置要播放的媒体
+                    audioList.add(noteItem.getContent());
+
+                    // 获取云端文件的 URL
+                    String cloudFileUrl = getBaseUrl()+ noteItem.getContent();
+                    // 使用云端文件的 URL 创建新的 Uri 对象
+                    Uri cloudUri = Uri.parse(cloudFileUrl);
+                    MediaItem mediaItem = MediaItem.fromUri(cloudUri);
+                    player.setMediaItem(mediaItem);
+
+                    playerView.setPadding(5, 5, 5, 5);
+                    // 创建并设置布局参数
+                    LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            5*marginInPx
+                    );
+                    layoutParams.setMargins(marginInPx, marginInPx/2, marginInPx, marginInPx/2);
+                    playerView.setLayoutParams(layoutParams);
+
+
+                    // mediaPlayer.prepareAsync();
+                    player.prepare();
+                    // player.play();
+                    playerView.setTag(noteItem);
+                    // 为 Playview 设置点击选中事件
+                    playerView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            // 点击时选中
+                            toggleSelectView((View) v);
+                        }
+                    });
+                    ivContent.addView(playerView);
+                } catch (Exception e) {
+                    Toast.makeText(getBaseContext(), e.toString(), Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    private void updateViews() {
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+        apiService.getNote(ID).enqueue(new Callback<NoteResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<NoteResponse> call, @NonNull Response<NoteResponse> response) {
+                // Hide loading dialog or UI indication
+                if (response.isSuccessful()) {
+                    NoteResponse noteResponse = response.body();
+                    List<NoteContent> contentsRemote = noteResponse.getContents();
+                    note = new Note();
+                    note.setTitle(noteResponse.getTitle());
+                    note.setId(noteResponse.getId());
+                    note.setCreated_at(noteResponse.getCreated_at());
+                    note.setUpdated_at(noteResponse.getUpdated_at());
+                    note.setTag(noteResponse.getTag());
+
+                    ArrayList<NoteItem> noteItems = new ArrayList<>();
+                    for(NoteContent noteContent: contentsRemote) {
+                        int id = noteContent.getId();
+                        int type = noteContent.getType();
+                        String contentValue = "";
+                        switch (type) {
+                            case 0:
+                                if (noteContent.getTextContent() != null) {
+                                    contentValue = noteContent.getTextContent().getText();
+                                }
+                                break;
+                            case 1:
+                                if (noteContent.getImageContent() != null) {
+                                    contentValue = noteContent.getImageContent().getImageUrl();
+                                }
+                                break;
+                            case 2:
+                                if (noteContent.getAudioContent() != null) {
+                                    contentValue = noteContent.getAudioContent().getAudioUrl();
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                        noteItems.add(new NoteItem(id, type, contentValue));
+                    }
+                    note.setContent(noteItems);
+                    Intent intent = new Intent(AddNoteActivity.this, NoteDetailActivity.class);
+                    intent.putExtra("note", note);
+                    startActivity(intent);
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<NoteResponse> call, @NonNull Throwable t) {
+                // Hide loading dialog or UI indication
+                Toast.makeText(AddNoteActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    public void createNoteRequest(boolean finish) {
         // Show a loading dialog or some UI indication
         String csrfToken = sharedPreferences.getString("csrf_token", null);
         String cookie = sharedPreferences.getString("cookie", null);
@@ -302,7 +588,7 @@ public class AddNoteActivity extends BaseActivity {
 
         // Create EditNoteRequest object
         String title = etTitle.getText().toString().trim();
-        String tag= etTag.getText().toString().trim();
+//        String tag= etTag.getText().toString().trim();
         // 获取当前时间
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日 HH:mm:ss", Locale.getDefault());
         currentTime = sdf.format(new Date());
@@ -313,7 +599,7 @@ public class AddNoteActivity extends BaseActivity {
             noteItemMaps.add(item.toMap());
         }
 
-        NoteRequest noteRequest = new NoteRequest(title, tag,currentTime, currentTime, noteItemMaps);
+        NoteRequest noteRequest = new NoteRequest(title, currentTag, currentTime, currentTime, noteItemMaps);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(noteRequest);
@@ -325,17 +611,24 @@ public class AddNoteActivity extends BaseActivity {
                         // Hide loading dialog or UI indication
                         if (response.isSuccessful()) {
                     NoteResponse noteResponse = response.body();
-                    handleNoteContents(noteResponse.getContents());
-                    Toast.makeText(AddNoteActivity.this, "Note created successfully", Toast.LENGTH_SHORT).show();
+                    List<NoteContent> contentsRemote = noteResponse.getContents();
+                    handleNoteContents(contentsRemote);
+                    ID = noteResponse.getId();
+                    Toast.makeText(AddNoteActivity.this, "创建成功", Toast.LENGTH_SHORT).show();
+                    if(finish) {
+                        finish();
+                    } else {
+                        updateViews();
+                    }
                 } else {
-                    Toast.makeText(AddNoteActivity.this, "Failed to edit note", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(AddNoteActivity.this, "创建失败", Toast.LENGTH_SHORT).show();
                 }
             }
    
             @Override
             public void onFailure(Call<NoteResponse> call, Throwable t) {
                 // Hide loading dialog or UI indication
-                Toast.makeText(AddNoteActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(AddNoteActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -388,7 +681,7 @@ public class AddNoteActivity extends BaseActivity {
                 if (response.isSuccessful()) {
                     UploadFileResponse uploadResponse = response.body();
                     if (uploadResponse.isSuccess()) {
-                        Toast.makeText(AddNoteActivity.this, "文件上传成功", Toast.LENGTH_SHORT).show();
+                        return;
                     } else {
                         Toast.makeText(AddNoteActivity.this, "文件上传失败: " + uploadResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
@@ -407,7 +700,11 @@ public class AddNoteActivity extends BaseActivity {
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
-        for (int i = 2; i < parent.getChildCount(); i++) { //从2开始不计标题和标签
+        int i = 1;
+        if(parent.getChildAt(1) instanceof TextView && !(parent.getChildAt(1) instanceof EditText)) {
+            i = 2;
+        }
+        for (; i < parent.getChildCount(); i++) { //从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
                 Object tag = child.getTag();
@@ -768,7 +1065,7 @@ public class AddNoteActivity extends BaseActivity {
                     removeSelection();
                     ivContent.removeView(toBeDeleted);
                     // 合并相邻的 EditText
-                    if (index - 1 > 0 && ivContent.getChildAt(index - 1) instanceof EditText) {
+                    if (index - 1 > 0 && ivContent.getChildAt(index) instanceof EditText && ivContent.getChildAt(index - 1) instanceof EditText) {
                         EditText editText = (EditText) ivContent.getChildAt(index);
                         EditText previousEditText = (EditText) ivContent.getChildAt(index - 1);
                         int new_cursor_pos = previousEditText.getText().length();
@@ -778,8 +1075,10 @@ public class AddNoteActivity extends BaseActivity {
                         previousEditText.setSelection(new_cursor_pos);
                     }
                     else {
-                        EditText editText = (EditText) ivContent.getChildAt(index);
-                        editText.requestFocus();
+                        if(ivContent.getChildAt(index) instanceof EditText) {
+                            EditText editText = (EditText) ivContent.getChildAt(index);
+                            editText.requestFocus();
+                        }
                     }
                 }
                 return true;
@@ -811,7 +1110,7 @@ public class AddNoteActivity extends BaseActivity {
                     removeSelection();
                     ivContent.removeView(toBeDeleted);
                     // 合并相邻的 EditText
-                    if (index - 1 > 0 && ivContent.getChildAt(index - 1) instanceof EditText) {
+                    if (index - 1 > 0 && ivContent.getChildAt(index) instanceof EditText && ivContent.getChildAt(index - 1) instanceof EditText) {
                         EditText editText = (EditText) ivContent.getChildAt(index);
                         EditText previousEditText = (EditText) ivContent.getChildAt(index - 1);
                         int new_cursor_pos = previousEditText.getText().length();
@@ -821,8 +1120,10 @@ public class AddNoteActivity extends BaseActivity {
                         previousEditText.setSelection(new_cursor_pos);
                     }
                     else {
-                        EditText editText = (EditText) ivContent.getChildAt(index);
-                        editText.requestFocus();
+                        if(ivContent.getChildAt(index) instanceof EditText) {
+                            EditText editText = (EditText) ivContent.getChildAt(index);
+                            editText.requestFocus();
+                        }
                     }
                 }
                 return true;

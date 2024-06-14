@@ -44,19 +44,10 @@ class User_info(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class User_folder(models.Model):
-    id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=255)
-    created_at = models.CharField(max_length=255)
-    updated_at = models.CharField(max_length=255)
-
-
 class User_note(models.Model):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    folder = models.ForeignKey(
-        User_folder, on_delete=models.CASCADE, null=True, blank=True)
+    tag = models.CharField(max_length=100, blank=True, null=True)
     title = models.CharField(max_length=255)
     created_at = models.CharField(max_length=255)
     updated_at = models.CharField(max_length=255)

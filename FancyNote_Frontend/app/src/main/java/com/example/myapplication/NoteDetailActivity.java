@@ -20,6 +20,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.InputFilter;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
@@ -28,6 +29,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -73,6 +75,7 @@ import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
@@ -96,9 +99,10 @@ public class NoteDetailActivity extends BaseActivity {
     private List<Uri> selectedUris;
     private static final String TAG = "MyActivityTag";
     private EditText etTitle,etTag;
+    private String currentTag = "";
     private EditText etContent;// 内容
     private List<Integer> existedIDs = new ArrayList<>(); //已有的ID
-    private ImageView ivImage, ivAudio, ivUpload, ivDelete;// 图片,音频,上传,删除
+    private ImageView ivImage, ivAudio, ivUpload, ivDelete, ivTag;// 图片,音频,上传,删除, 标签
     private TextView tvComplete; // 完成
     private LinearLayout ivContent;
     private ScrollView scrollView;
@@ -137,6 +141,7 @@ public class NoteDetailActivity extends BaseActivity {
         sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
         logged = sharedPreferences.getBoolean("isLoggedIn", false);
         note = (Note) getIntent().getSerializableExtra("note");
+        currentTag = note.getTag();
         initViews();
 
         setDataToView();
@@ -150,11 +155,11 @@ public class NoteDetailActivity extends BaseActivity {
         getSupportActionBar().setTitle("");
 
         etTitle = (EditText) findViewById(R.id.etTitle);
-        etTag= (EditText) findViewById(R.id.etTag);
         ivImage = (ImageView) findViewById(R.id.ivImage);
         ivAudio = (ImageView) findViewById(R.id.ivAudio);
         ivUpload = (ImageView) findViewById(R.id.ivUpload);
         ivDelete = (ImageView) findViewById(R.id.ivDelete);
+        ivTag = (ImageView) findViewById(R.id.ivTag);
         ivContent = (LinearLayout) findViewById(R.id.linearLayout);
         scrollView = findViewById(R.id.scroll);
         ivContent = findViewById(R.id.linearLayout);
@@ -163,6 +168,7 @@ public class NoteDetailActivity extends BaseActivity {
         ivAudio.setOnClickListener(this);
         ivUpload.setOnClickListener(this);
         ivDelete.setOnClickListener(this);
+        ivTag.setOnClickListener(this);
         tvComplete.setOnClickListener(this);
         scrollView.setOnClickListener(this);
 
@@ -200,6 +206,20 @@ public class NoteDetailActivity extends BaseActivity {
     // 读出数据添加到页面
     private void setDataToView() {
         etTitle.setText(note.getTitle());
+        if(!Objects.equals(currentTag, "")) {
+            TextView tagView = new TextView(NoteDetailActivity.this);
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            layoutParams.setMargins(2*marginInPx,marginInPx/2,marginInPx,marginInPx/2);
+            tagView.setLayoutParams(layoutParams);
+            tagView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+            tagView.setText(currentTag);
+            tagView.setPadding(20, 20, 20, 20);
+            tagView.setBackgroundResource(R.drawable.image_border); // 设置标签的背景样式
+            ivContent.addView(tagView);
+        }
         for (int i = 0; i < note.getContent().size(); i++) {
             NoteItem noteItem = note.getContent().get(i);
             existedIDs.add(noteItem.getId());
@@ -312,6 +332,68 @@ public class NoteDetailActivity extends BaseActivity {
         }
     }
 
+    private void updateViews() {
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+
+        int id = note.getId();
+        apiService.getNote(id).enqueue(new Callback<NoteResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<NoteResponse> call, @NonNull Response<NoteResponse> response) {
+                // Hide loading dialog or UI indication
+                if (response.isSuccessful()) {
+                    NoteResponse noteResponse = response.body();
+                    List<NoteContent> contentsRemote = noteResponse.getContents();
+                    note = new Note();
+                    note.setTitle(noteResponse.getTitle());
+                    note.setId(noteResponse.getId());
+                    note.setCreated_at(noteResponse.getCreated_at());
+                    note.setUpdated_at(noteResponse.getUpdated_at());
+                    note.setTag(noteResponse.getTag());
+
+                    ArrayList<NoteItem> noteItems = new ArrayList<>();
+                    for(NoteContent noteContent: contentsRemote) {
+                        int id = noteContent.getId();
+                        int type = noteContent.getType();
+                        String contentValue = "";
+                        switch (type) {
+                            case 0:
+                                if (noteContent.getTextContent() != null) {
+                                    contentValue = noteContent.getTextContent().getText();
+                                }
+                                break;
+                            case 1:
+                                if (noteContent.getImageContent() != null) {
+                                    contentValue = noteContent.getImageContent().getImageUrl();
+                                }
+                                break;
+                            case 2:
+                                if (noteContent.getAudioContent() != null) {
+                                    contentValue = noteContent.getAudioContent().getAudioUrl();
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                        noteItems.add(new NoteItem(id, type, contentValue));
+                    }
+                    note.setContent(noteItems);
+                    for (int i = ivContent.getChildCount() - 1; i >= 1; i--) {
+                        ivContent.removeView(ivContent.getChildAt(i));
+                    }
+                    setDataToView();
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<NoteResponse> call, @NonNull Throwable t) {
+                // Hide loading dialog or UI indication
+                Toast.makeText(NoteDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.scroll) {// 点击空白处聚焦到最后一个edittext
@@ -349,7 +431,55 @@ public class NoteDetailActivity extends BaseActivity {
                     })
                     .setNegativeButton("取消", null)
                     .show();
-        } else if (v.getId() == R.id.ivDelete) { // 删除
+        }else if (v.getId()==R.id.ivTag) { //添加标签
+            // 创建一个EditText控件，用于输入标签
+            final EditText input = new EditText(this);
+            input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) }); // 限制输入长度为10
+
+            // 创建一个FrameLayout来包装EditText
+            FrameLayout container = new FrameLayout(this);
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT
+            );
+            params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
+            input.setLayoutParams(params);
+            container.addView(input);
+            // 创建并显示一个AlertDialog
+            new AlertDialog.Builder(this)
+                    .setTitle("添加标签")
+                    .setView(container)
+                    .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            currentTag = input.getText().toString();
+                            //先删除旧的
+                            LinearLayout tagsContainer = findViewById(R.id.linearLayout);
+                            View view = tagsContainer.getChildAt(1);
+                            if(view instanceof TextView && !(view instanceof EditText)) {
+                                tagsContainer.removeView(view);
+                            }
+                            if (!currentTag.isEmpty()) {
+
+                                TextView tagView = new TextView(NoteDetailActivity.this);
+                                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                                        LinearLayout.LayoutParams.WRAP_CONTENT
+                                );
+                                layoutParams.setMargins(2*marginInPx,marginInPx/2,marginInPx,marginInPx/2);
+                                tagView.setLayoutParams(layoutParams);
+                                tagView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17);
+                                tagView.setText(currentTag);
+                                tagView.setPadding(20, 20, 20, 20);
+                                tagView.setBackgroundResource(R.drawable.image_border); // 设置标签的背景样式
+                                tagsContainer.addView(tagView, 1);
+                            }
+                        }
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+        }
+        else if (v.getId() == R.id.ivDelete) { // 删除
             if(!logged) {
 
                 return;
@@ -404,8 +534,8 @@ public class NoteDetailActivity extends BaseActivity {
         } else if (v.getId() == R.id.ivAudio) {
             checkPermission();
             new AlertDialog.Builder(this)
-                    .setTitle("Select Action")
-                    .setItems(new String[] { "Add Audio", "Record Audio" }, new DialogInterface.OnClickListener() {
+                    .setTitle("选择操作")
+                    .setItems(new String[]{"选择本地音频", "录音"}, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             if (which == 0) {
@@ -432,7 +562,6 @@ public class NoteDetailActivity extends BaseActivity {
         String currentTime = sdf.format(new Date());
         // Create EditNoteRequest object
         String title = etTitle.getText().toString().trim();
-        String tag= etTag.getText().toString().trim();
         String created_at = note.getCreated_at();
         int id = note.getId();
 
@@ -442,7 +571,7 @@ public class NoteDetailActivity extends BaseActivity {
             noteItemMaps.add(item.toMap());
         }
 
-        NoteRequest noteRequest = new NoteRequest(title, tag,created_at, currentTime, noteItemMaps);
+        NoteRequest noteRequest = new NoteRequest(title, currentTag, created_at, currentTime, noteItemMaps);
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(noteRequest);
@@ -454,17 +583,19 @@ public class NoteDetailActivity extends BaseActivity {
                 // Hide loading dialog or UI indication
                 if (response.isSuccessful()) {
                     NoteResponse noteResponse = response.body();
-                    handleNoteContents(noteResponse.getContents());
-                    Toast.makeText(NoteDetailActivity.this, "修改成功", Toast.LENGTH_SHORT).show();
+                    List<NoteContent> contentsRemote = noteResponse.getContents();
+                    handleNoteContents(contentsRemote);
+                    updateViews();
+                    Toast.makeText(NoteDetailActivity.this, "编辑成功", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(NoteDetailActivity.this, "修改失败", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(NoteDetailActivity.this, "编辑失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<NoteResponse> call, Throwable t) {
                 // Hide loading dialog or UI indication
-                Toast.makeText(NoteDetailActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(NoteDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -490,7 +621,7 @@ public class NoteDetailActivity extends BaseActivity {
             @Override
             public void onFailure(@NonNull Call<Void> call, @NonNull Throwable t) {
                 // Hide loading dialog or UI indication
-                Toast.makeText(NoteDetailActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(NoteDetailActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -545,7 +676,7 @@ public class NoteDetailActivity extends BaseActivity {
                 if (response.isSuccessful()) {
                     UploadFileResponse uploadResponse = response.body();
                     if (uploadResponse.isSuccess()) {
-                        Toast.makeText(NoteDetailActivity.this, "文件上传成功", Toast.LENGTH_SHORT).show();
+                        return;
                     } else {
                         Toast.makeText(NoteDetailActivity.this, "文件上传失败: " + uploadResponse.getMessage(),
                                 Toast.LENGTH_SHORT).show();
@@ -565,6 +696,7 @@ public class NoteDetailActivity extends BaseActivity {
     private void traverseViews(ViewGroup parent) {
         int audio_index = 0;
         int image_index = 0;
+        noteItemList.clear();
         for (int i = 2; i < parent.getChildCount(); i++) { // 从1开始不计标题
             View child = parent.getChildAt(i);
             if (child instanceof PlayerView) {
@@ -923,7 +1055,7 @@ public class NoteDetailActivity extends BaseActivity {
                     removeSelection();
                     ivContent.removeView(toBeDeleted);
                     // 合并相邻的 EditText
-                    if (index - 1 > 0 && ivContent.getChildAt(index - 1) instanceof EditText) {
+                    if (index - 1 > 0 && ivContent.getChildAt(index) instanceof EditText && ivContent.getChildAt(index - 1) instanceof EditText) {
                         EditText editText = (EditText) ivContent.getChildAt(index);
                         EditText previousEditText = (EditText) ivContent.getChildAt(index - 1);
                         int new_cursor_pos = previousEditText.getText().length();
@@ -933,8 +1065,10 @@ public class NoteDetailActivity extends BaseActivity {
                         previousEditText.setSelection(new_cursor_pos);
                     }
                     else {
-                        EditText editText = (EditText) ivContent.getChildAt(index);
-                        editText.requestFocus();
+                        if(ivContent.getChildAt(index) instanceof EditText) {
+                            EditText editText = (EditText) ivContent.getChildAt(index);
+                            editText.requestFocus();
+                        }
                     }
                 }
                 return true;
@@ -965,7 +1099,7 @@ public class NoteDetailActivity extends BaseActivity {
                     removeSelection();
                     ivContent.removeView(toBeDeleted);
                     // 合并相邻的 EditText
-                    if (index - 1 > 0 && ivContent.getChildAt(index - 1) instanceof EditText) {
+                    if (index - 1 > 0 && ivContent.getChildAt(index) instanceof EditText && ivContent.getChildAt(index - 1) instanceof EditText) {
                         EditText editText = (EditText) ivContent.getChildAt(index);
                         EditText previousEditText = (EditText) ivContent.getChildAt(index - 1);
                         int new_cursor_pos = previousEditText.getText().length();
@@ -975,8 +1109,10 @@ public class NoteDetailActivity extends BaseActivity {
                         previousEditText.setSelection(new_cursor_pos);
                     }
                     else {
-                        EditText editText = (EditText) ivContent.getChildAt(index);
-                        editText.requestFocus();
+                        if(ivContent.getChildAt(index) instanceof EditText) {
+                            EditText editText = (EditText) ivContent.getChildAt(index);
+                            editText.requestFocus();
+                        }
                     }
                 }
                 return true;

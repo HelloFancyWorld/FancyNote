@@ -50,11 +50,16 @@
         </activity>
         <activity
             android:name=".SearchActivity"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:parentActivityName="com.example.myapplication.MainActivity">
         </activity>
 
         <activity
             android:name=".EditInfoActivity"
+            android:screenOrientation="portrait">
+        </activity>
+        <activity
+            android:name=".EditPWActivity"
             android:screenOrientation="portrait">
         </activity>
         <provider

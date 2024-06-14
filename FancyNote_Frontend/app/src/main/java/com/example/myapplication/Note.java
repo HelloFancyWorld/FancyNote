@@ -7,7 +7,7 @@ public class Note implements Serializable {
 
     private int id;
     private String title;
-    private String Tag;
+    private String tag="";
     private ArrayList<NoteItem> content;
     private String created_at;
     private String updated_at;
@@ -27,12 +27,13 @@ public class Note implements Serializable {
     public void setTitle(String title) {
         this.title = title;
     }
+
     public String getTag() {
-        return Tag;
+        return tag;
     }
 
-    public void setTag(String Tag) {
-        this.Tag = Tag;
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 
     public ArrayList<NoteItem> getContent() {
@@ -75,7 +76,7 @@ public class Note implements Serializable {
                 Abstract = "<图片>";
                 return Abstract;
             }
-            else {
+            else if (item.getType() == NoteItem.TYPE_AUDIO){
                 Abstract = "<音频>";
                 return Abstract;
             }

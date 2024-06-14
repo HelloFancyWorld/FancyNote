@@ -50,6 +50,11 @@ public class SearchActivity extends BaseActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
         sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);// 添加默认的返回图标
+        getSupportActionBar().setHomeButtonEnabled(true); // 设置返回键可用
         Intent intent = getIntent();
         Tag = intent.getStringExtra("note");
 

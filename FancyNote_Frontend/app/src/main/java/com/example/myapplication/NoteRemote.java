@@ -6,7 +6,7 @@ public class NoteRemote implements Serializable {
 
     private int id;
     private String title;
-    private String Tag;
+    private String tag;
     private ArrayList<NoteContent> contents;
     private String created_at;
     private String updated_at;
@@ -27,11 +27,11 @@ public class NoteRemote implements Serializable {
         this.title = title;
     }
     public String getTag() {
-        return Tag;
+        return tag;
     }
 
-    public void setTag(String Tag) {
-        this.Tag = Tag;
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 
     public ArrayList<NoteContent> getContents() {

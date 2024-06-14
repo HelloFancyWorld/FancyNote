@@ -4,7 +4,6 @@ public class UpdateInfoResponse {
     private boolean success;
     private String message;
 
-    // Optional additional fields
     private String nickname;
     private String email;
     private String motto;
@@ -25,7 +24,6 @@ public class UpdateInfoResponse {
         this.message = message;
     }
 
-    // Getters and setters for optional additional fields
     public String getNickname() {
         return nickname;
     }

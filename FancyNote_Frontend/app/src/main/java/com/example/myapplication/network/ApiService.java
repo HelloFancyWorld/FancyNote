@@ -40,6 +40,9 @@ public interface ApiService {
     @POST("/api/update_user_info/")
     Call<UpdateInfoResponse> updateUserInfo(@Body UpdateInfoRequest request);
 
+    @POST("/api/update_password/")
+    Call<UpdatePWResponse> updatePassword(@Body UpdatePWRequest request);
+
     @POST("/api/notes/")
     Call<NoteResponse> createNote(@Body NoteRequest noteRequest);
 
@@ -58,6 +61,9 @@ public interface ApiService {
 
     @DELETE("/api/notes/{id}/")
     Call<Void> deleteNote(@Path("id") int id);
+
+    @GET("/api/notes/{id}/")
+    Call<NoteResponse> getNote(@Path("id") int id);
 
     @PATCH("/api/notes/{id}/")
     Call<NoteResponse> editNote(@Path("id") int id, @Body NoteRequest noteRequest);

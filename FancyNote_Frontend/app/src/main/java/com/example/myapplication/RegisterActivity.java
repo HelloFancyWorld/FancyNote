@@ -76,7 +76,7 @@ public class RegisterActivity extends AppCompatActivity {
                     registerUser(updatedApiService);
                 } else {
                     isRequestInProgress = false;
-                    Toast.makeText(RegisterActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "获取CSRF令牌失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -84,7 +84,7 @@ public class RegisterActivity extends AppCompatActivity {
             public void onFailure(Call<CsrfTokenResponse> call, Throwable t) {
                 isRequestInProgress = false;
                 Log.d("Debug message", t.getMessage());
-                Toast.makeText(RegisterActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(RegisterActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -101,6 +101,23 @@ public class RegisterActivity extends AppCompatActivity {
             isRequestInProgress = false;
             return;
         }
+
+        // 检查用户名格式：5-20个字符，允许字母和数字
+        if (TextUtils.isEmpty(username) || !username.matches("^[a-zA-Z0-9]{5,20}$")) {
+            usernameEditText.setError("用户名应为5-20个字符的字母数字组合");
+            usernameEditText.requestFocus();
+            isRequestInProgress = false;
+            return;
+        }
+
+        // 检查密码格式：8-16个字符，允许字母和数字
+        if (TextUtils.isEmpty(password) || !password.matches("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,16}$")) {
+            passwordEditText.setError("密码应为8-16个字符的字母数字组合");
+            passwordEditText.requestFocus();
+            isRequestInProgress = false;
+            return;
+        }
+
 
         if (TextUtils.isEmpty(username)) {
             usernameEditText.setError("需要用户名");
@@ -132,7 +149,7 @@ public class RegisterActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     SignupResponse signupResponse = response.body();
                     if (signupResponse.isSuccess()) {
-                        Toast.makeText(RegisterActivity.this, "Registration successful", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(RegisterActivity.this, "注册成功", Toast.LENGTH_SHORT).show();
                         Intent intent = new Intent(RegisterActivity.this, MainActivity.class);
                         startActivity(intent);
                         finish();
@@ -140,14 +157,14 @@ public class RegisterActivity extends AppCompatActivity {
                         Toast.makeText(RegisterActivity.this, signupResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(RegisterActivity.this, "Registration failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(RegisterActivity.this, "注册失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<SignupResponse> call, Throwable t) {
                 isRequestInProgress = false;
-                Toast.makeText(RegisterActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(RegisterActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -17,7 +17,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="horizontal">
+            android:orientation="vertical">
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
@@ -36,8 +36,8 @@
             <TextView
                 android:id="@+id/tv_list"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_gravity="right"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
                 android:gravity="center"
                 android:paddingLeft="16dp"
                 android:paddingRight="16dp"
@@ -48,8 +48,8 @@
             <TextView
                 android:id="@+id/tv_add"
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:layout_gravity="right"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end|center_vertical"
                 android:gravity="center"
                 android:paddingLeft="16dp"
                 android:paddingRight="16dp"
@@ -58,11 +58,20 @@
                 android:textSize="28sp" />
 
             <ImageView
+                android:id="@+id/iv_download"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="end|center_vertical"
+                android:scaleType="fitCenter"
+                android:src="@drawable/download"
+                android:layout_marginLeft="8dp"
+                android:layout_marginRight="16dp"/>
+
+            <ImageView
                 android:id="@+id/tv_search"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="right"
-                android:gravity="right"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="end|center_vertical"
                 android:scaleType="fitCenter"
                 android:src="@drawable/search"
                 android:layout_marginLeft="8dp"
@@ -207,7 +216,7 @@
                     android:id="@+id/user_info_logged_buttons"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:gravity="center"
                     android:layout_marginTop="32dp"
                     android:visibility="gone">
@@ -220,10 +229,18 @@
                         android:text="编辑信息"/>
 
                     <Button
+                        android:id="@+id/pw_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="20dp"
+                        android:background="@drawable/button_background"
+                        android:text="修改密码"/>
+
+                    <Button
                         android:id="@+id/logout_button"
                         android:layout_width="wrap_content"
                         android:layout_height="40dp"
-                        android:layout_marginLeft="32dp"
+                        android:layout_marginTop="20dp"
                         android:background="@drawable/button_background"
                         android:text="退出登录"/>
                 </LinearLayout>

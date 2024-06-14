@@ -10,8 +10,8 @@ from django.contrib.auth.models import User
 import json
 from django.middleware.csrf import get_token, rotate_token
 from django.views.decorators.csrf import csrf_exempt
-from .serializers import UserNoteSerializer, ImageContentSerializer, AudioContentSerializer, UserFolderSerializer
-from .models import User_note, Content, ImageContent, AudioContent, User_folder, User_info
+from .serializers import UserNoteSerializer, ImageContentSerializer, AudioContentSerializer
+from .models import User_note, Content, ImageContent, AudioContent, User_info
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -91,7 +91,7 @@ def sign_up(request):
                 return JsonResponse({'message': 'Missing username or password', 'success': False}, status=400)
 
             if User.objects.filter(username=username).exists():
-                return JsonResponse({'message': 'Username already exists', 'success': False}, status=400)
+                return JsonResponse({'message': '用户名已存在', 'success': False}, status=400)
 
             user = User.objects.create_user(
                 username=username, password=password, email=email)
@@ -141,21 +141,7 @@ class UserNoteViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # 过滤查询集以仅包含当前请求用户的笔记
-        return User_note.objects.filter(user=self.request.user)
-
-
-class UserFolderViewSet(viewsets.ModelViewSet):
-    queryset = User_folder.objects.all()
-    serializer_class = UserFolderSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        # 手动设置'user'字段为当前请求的用户
-        serializer.save(user=self.request.user)
-
-    def get_queryset(self):
-        # 过滤查询集以仅包含当前请求用户的文件夹
-        return User_folder.objects.filter(user=self.request.user)
+        return User_note.objects.filter(user=self.request.user).order_by('-updated_at')
 
 
 @login_required
@@ -172,10 +158,42 @@ def edit_info(request):
             user.email = data.get('email', user.email)
             user.save()
 
-            return JsonResponse({'message': 'User info updated successfully', 'success': True}, status=200)
+            return JsonResponse({'message': 'User info updated successfully',
+                                 'success': True,
+                                 'nickname': user_info.nickname,
+                                 'email': user.email,
+                                 'motto': user.email}, status=200)
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON', 'success': False}, status=400)
     return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)
+
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            current_password = data.get('oldpw')
+            new_password = data.get('newpw')
+
+            # 验证当前密码
+            user = authenticate(
+                request, username=request.user.username, password=current_password)
+            if user is not None:
+                # 保存新密码
+                user.set_password(new_password)
+                user.save()
+                # 返回成功响应
+                return JsonResponse({'message': '成功修改密码', 'success': True}, status=200)
+            else:
+                # 如果当前密码不正确，返回错误响应
+                return JsonResponse({'message': '当前密码不正确', 'success': False}, status=401)
+        except json.JSONDecodeError:
+            # 如果JSON解码错误，返回错误响应
+            return JsonResponse({'message': 'Invalid JSON', 'success': False}, status=400)
+    else:
+        # 如果不是POST请求，返回错误响应
+        return JsonResponse({'message': 'Only POST requests are allowed', 'success': False}, status=405)
 
 
 class ContentUploadView(APIView):

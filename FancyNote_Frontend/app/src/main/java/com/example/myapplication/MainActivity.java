@@ -3,6 +3,7 @@ package com.example.myapplication;
 import static com.example.myapplication.NoteItem.TYPE_TEXT;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -66,6 +67,7 @@ import java.io.File;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MainActivity extends BaseActivity {
 
@@ -79,10 +81,10 @@ public class MainActivity extends BaseActivity {
     private static final String TAG = "MyActivityTag";
     private SearchView searchView;
     private NavigationView navigationView;
-    private ImageView iv_avatar,tv_search;
+    private ImageView iv_avatar,tv_search, iv_download;
     private ImageView user_info_avatar;
     private NavigationView user_info;
-    private Button signup_button, login_button, logout_button, editinfo_button;
+    private Button signup_button, login_button, logout_button, editinfo_button, pw_button;
     private TextView user_info_username, user_info_motto, user_info_email;
     private SharedPreferences sharedPreferences;
     private List<Note> noteList = new ArrayList<>();
@@ -96,6 +98,10 @@ public class MainActivity extends BaseActivity {
     private ActivityResultLauncher<String> pickImageLauncher;
     private Uri selectedImageUri;
     private List<String> TagList=new ArrayList<>();
+
+    public void onBackPressed() {
+        return;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -145,6 +151,8 @@ public class MainActivity extends BaseActivity {
                 (Settings.Secure.getString(FancyNote.getAppContext().getContentResolver(),
                         Settings.Secure.ANDROID_ID) == null));
     }
+
+
 
     @Override
     protected void onResume() {
@@ -210,14 +218,6 @@ public class MainActivity extends BaseActivity {
         LinearLayout user_info_logged_buttons = findViewById(R.id.user_info_logged_buttons);
         user_info_logged_buttons.setVisibility(View.VISIBLE);
 
-        Button edit_button = findViewById(R.id.edit_button);
-        edit_button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                editUserInfo();
-            }
-        });
-
         logout_button = findViewById(R.id.logout_button);
         logout_button.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -231,12 +231,32 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, EditInfoActivity.class);
+                startActivityForResult(intent, 1);
+            }
+        });
+
+        pw_button = findViewById(R.id.pw_button);
+        pw_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, EditPWActivity.class);
                 startActivity(intent);
             }
         });
     }
 
-    private void editUserInfo() {
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1 && resultCode == RESULT_OK) {
+            // Reload user info and update UI
+            nickname = sharedPreferences.getString("nickname", null);
+            email = sharedPreferences.getString("email", null);
+            motto = sharedPreferences.getString("motto", null);
+            user_info_username.setText(nickname);
+            user_info_motto.setText(motto);
+            user_info_email.setText(email);
+        }
     }
 
     private void logoutUser() {
@@ -256,7 +276,7 @@ public class MainActivity extends BaseActivity {
                         sharedPreferences.edit().remove("avatar").apply();
                         sharedPreferences.edit().remove("motto").apply();
 
-                        Toast.makeText(MainActivity.this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "登出成功", Toast.LENGTH_SHORT).show();
 
                         // 刷新页面
                         Intent intent = new Intent(MainActivity.this, MainActivity.class);
@@ -267,13 +287,13 @@ public class MainActivity extends BaseActivity {
                         Toast.makeText(MainActivity.this, logoutResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(MainActivity.this, "Logout failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "登出失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<LogoutResponse> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -311,6 +331,8 @@ public class MainActivity extends BaseActivity {
         tv_add = (TextView) findViewById(R.id.tv_add);
         tv_list = (TextView) findViewById(R.id.tv_list);
         tv_search=findViewById(R.id.tv_search);
+        iv_download = findViewById(R.id.iv_download);
+
         drawer = findViewById(R.id.drawer_layout);
 
         user_info = findViewById(R.id.user_info);
@@ -342,6 +364,29 @@ public class MainActivity extends BaseActivity {
                 startActivity(intent);
             }
         });
+
+        iv_download.setOnClickListener(new View.OnClickListener() {//云端同步
+            @Override
+            public void onClick(View view) {
+                if(!isLoggedIn){
+                    Toast.makeText(MainActivity.this, "请先登录", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // 创建并显示确认对话框
+                new android.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("确认同步")
+                        .setMessage("确定要从云端同步笔记吗？")
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                noteList.clear();
+                                queryNotes();
+                                Toast.makeText(MainActivity.this, "同步成功", Toast.LENGTH_SHORT).show();
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
+            }
+        });
         user_info_avatar = findViewById(R.id.user_info_avatar);
         if (avatarUrl != null && !avatarUrl.isEmpty()) {
             loadImageWithGlide(avatarUrl, user_info_avatar);
@@ -365,8 +410,14 @@ public class MainActivity extends BaseActivity {
         navigationView = findViewById(R.id.nav_view);
 
         navigationView.setNavigationItemSelectedListener(item -> {
-            String id = item.getTitle().toString();
-            Tag=id;
+            String id = item.getTitle().toString().trim();
+            if(id.equals("显示全部")){
+                TagNotes("");
+            }
+            else{
+                Tag=id;
+                TagNotes(Tag);
+            }
             drawer.closeDrawer(GravityCompat.START);
             return true;
         });
@@ -468,42 +519,41 @@ public class MainActivity extends BaseActivity {
     }
 
     // 查询出来本地数据库已经添加的备忘
-    private void queryNotesLocal() {
-        Cursor cursor = writableDB.query(DatabaseHelper.TABLE_NAME, null, null, null, null, null, null, null);
-        while (cursor.moveToNext()) {
-
-            int id = cursor.getInt(cursor.getColumnIndex(DatabaseHelper.ID));
-            String title = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TITLE));
-            String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
-            String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
-            String tag = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
-            Gson gson = new Gson();
-            Type type = new TypeToken<List<NoteItem>>() {
-            }.getType();
-            ArrayList<NoteItem> structArray = gson.fromJson(content, type);
-            Note note = new Note();
-            note.setId(id);
-            note.setTitle(title);
-            note.setUpdated_at(time);
-            note.setContent(structArray);
-            noteList.add(note);
-        }
-        cursor.close();
-        mAdapter = new NoteListAdapter(MainActivity.this, noteList);
-        LinearLayoutManager manager = new LinearLayoutManager(MainActivity.this);
-        manager.setOrientation(LinearLayoutManager.VERTICAL);
-        rcvNoteList.setLayoutManager(manager);
-        rcvNoteList.setAdapter(mAdapter);
-        // 添加分隔线
-        rcvNoteList.addItemDecoration(new MyDecoration(MainActivity.this, MyDecoration.VERTICAL_LIST));
-    }
+//    private void queryNotesLocal() {
+//        Cursor cursor = writableDB.query(DatabaseHelper.TABLE_NAME, null, null, null, null, null, null, null);
+//        while (cursor.moveToNext()) {
+//
+//            int id = cursor.getInt(cursor.getColumnIndex(DatabaseHelper.ID));
+//            String title = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TITLE));
+//            String content = cursor.getString(cursor.getColumnIndex(DatabaseHelper.CONTENT));
+//            String time = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TIME));
+//            String tag = cursor.getString(cursor.getColumnIndex(DatabaseHelper.TAG));
+//            Gson gson = new Gson();
+//            Type type = new TypeToken<List<NoteItem>>() {
+//            }.getType();
+//            ArrayList<NoteItem> structArray = gson.fromJson(content, type);
+//            Note note = new Note();
+//            note.setId(id);
+//            note.setTitle(title);
+//            note.setUpdated_at(time);
+//            note.setContent(structArray);
+//            noteList.add(note);
+//        }
+//        cursor.close();
+//        mAdapter = new NoteListAdapter(MainActivity.this, noteList);
+//        LinearLayoutManager manager = new LinearLayoutManager(MainActivity.this);
+//        manager.setOrientation(LinearLayoutManager.VERTICAL);
+//        rcvNoteList.setLayoutManager(manager);
+//        rcvNoteList.setAdapter(mAdapter);
+//        // 添加分隔线
+//        rcvNoteList.addItemDecoration(new MyDecoration(MainActivity.this, MyDecoration.VERTICAL_LIST));
+//    }
 
     // 远程查询已经添加的备忘
     private void queryNotes() {
         String csrfToken = sharedPreferences.getString("csrf_token", null);
         String cookie = sharedPreferences.getString("cookie", null);
         ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
-
         apiService.getNoteList().enqueue(new Callback<List<NoteRemote>>() {
             @Override
             public void onResponse(@NonNull Call<List<NoteRemote>> call, @NonNull Response<List<NoteRemote>> response) {
@@ -511,12 +561,13 @@ public class MainActivity extends BaseActivity {
                 // Hide loading dialog or UI indication
                 if (response.isSuccessful()) {
                     List<NoteRemote> notes = response.body();
+                    TagList.clear();
                     //类型转换
                     for(NoteRemote noteRemote: notes) {
                         Note note = new Note();
                         note.setId(noteRemote.getId());
                         note.setTag(noteRemote.getTag());
-                        if(noteRemote.getTag()!=""){
+                        if (!Objects.equals(noteRemote.getTag(), "") && !TagList.contains(noteRemote.getTag())) {
                             TagList.add(noteRemote.getTag());
                         }
                         note.setTitle(noteRemote.getTitle());
@@ -561,6 +612,11 @@ public class MainActivity extends BaseActivity {
                     rcvNoteList.setAdapter(mAdapter);
                     // 添加分隔线
                     rcvNoteList.addItemDecoration(new MyDecoration(MainActivity.this, MyDecoration.VERTICAL_LIST));
+                    Menu menu = navigationView.getMenu();
+                    getMenuInflater().inflate(R.menu.drawer_menu, menu);
+
+                    // 调用方法向菜单中添加字符串列表的项
+                    addItemsToMenu(menu);
                 } else {
                     Log.d("API_RESPONSE", "Response not successful: " + response.message());
                     Toast.makeText(MainActivity.this, "查询云端笔记失败: " + response.message(), Toast.LENGTH_SHORT).show();
@@ -570,52 +626,76 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onFailure(Call<List<NoteRemote>> call, Throwable t) {
                 // Hide loading dialog or UI indication
-                Toast.makeText(MainActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
-
-    private void searchNotes(String text) {
+    private void TagNotes(String text) {
         // 假设你使用Room数据库
-        List<Note> tmpList = new ArrayList<>();
-        for (int i = 0; i < noteList.size(); i++) {
-            ArrayList<NoteItem> content = noteList.get(i).getContent();
-            for (int j = 0; j < content.size(); j++) {
-                NoteItem noteItem = content.get(j);
-                if (noteItem.getType() == TYPE_TEXT) {
-                    if (noteItem.getContent().contains(text)) {
-                        tmpList.add(noteList.get(i));
-                        break;
-                    }
+        if(text.equals("")){
+            List<Note> tmpList = new ArrayList<>();
+            for (int i = 0; i < noteList.size(); i++) {
+                    tmpList.add(noteList.get(i));
+            }
+            mAdapter = new NoteListAdapter(this, tmpList);
+            LinearLayoutManager manager = new LinearLayoutManager(this);
+            manager.setOrientation(LinearLayoutManager.VERTICAL);
+            rcvNoteList.setLayoutManager(manager);
+            rcvNoteList.setAdapter(mAdapter);
+            //添加分隔线
+            rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
+        }
+        else {
+            List<Note> tmpList = new ArrayList<>();
+            for (int i = 0; i < noteList.size(); i++) {
+                if (text.equals(noteList.get(i).getTag())) {
+                    tmpList.add(noteList.get(i));
                 }
             }
+            mAdapter = new NoteListAdapter(this, tmpList);
+            LinearLayoutManager manager = new LinearLayoutManager(this);
+            manager.setOrientation(LinearLayoutManager.VERTICAL);
+            rcvNoteList.setLayoutManager(manager);
+            rcvNoteList.setAdapter(mAdapter);
+            //添加分隔线
+            rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
         }
-        mAdapter = new NoteListAdapter(this, tmpList);
-        LinearLayoutManager manager = new LinearLayoutManager(this);
-        manager.setOrientation(LinearLayoutManager.VERTICAL);
-        rcvNoteList.setLayoutManager(manager);
-        rcvNoteList.setAdapter(mAdapter);
-        // 添加分隔线
-        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
     }
+
+//    private void searchNotes(String text) {
+//        // 假设你使用Room数据库
+//        List<Note> tmpList = new ArrayList<>();
+//        for (int i = 0; i < noteList.size(); i++) {
+//            ArrayList<NoteItem> content = noteList.get(i).getContent();
+//            for (int j = 0; j < content.size(); j++) {
+//                NoteItem noteItem = content.get(j);
+//                if (noteItem.getType() == TYPE_TEXT) {
+//                    if (noteItem.getContent().contains(text)) {
+//                        tmpList.add(noteList.get(i));
+//                        break;
+//                    }
+//                }
+//            }
+//        }
+//        mAdapter = new NoteListAdapter(this, tmpList);
+//        LinearLayoutManager manager = new LinearLayoutManager(this);
+//        manager.setOrientation(LinearLayoutManager.VERTICAL);
+//        rcvNoteList.setLayoutManager(manager);
+//        rcvNoteList.setAdapter(mAdapter);
+//        // 添加分隔线
+//        rcvNoteList.addItemDecoration(new MyDecoration(this, MyDecoration.VERTICAL_LIST));
+//    }
 
     @Override
     public void onClick(View v) {
         showAddMenuDialog();
     }
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.drawer_menu, menu);
-
-        // 调用方法向菜单中添加字符串列表的项
-        addItemsToMenu(menu);
-
-        return true;
-    }
     private void addItemsToMenu(Menu menu) {
         // 假设你有一个字符串列表
 
         // 遍历字符串列表，为每个字符串创建一个菜单项并添加到菜单中
+        menu.clear();
+        menu.add(Menu.NONE, Menu.FIRST, Menu.NONE, "显示全部");
         for (int i = 0; i < TagList.size(); i++) {
             String itemText = TagList.get(i);
             menu.add(Menu.NONE, Menu.FIRST + i, Menu.NONE, itemText);
@@ -634,7 +714,7 @@ public class MainActivity extends BaseActivity {
             @Override
             public void onClick(View v) {
                     if(!isLoggedIn){
-                        Toast.makeText(MainActivity.this, "please log in", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "请先登录", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     Intent intent = new Intent(MainActivity.this, AddNoteActivity.class);

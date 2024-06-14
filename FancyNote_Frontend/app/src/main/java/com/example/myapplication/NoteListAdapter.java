@@ -58,22 +58,11 @@ public class NoteListAdapter extends RecyclerView.Adapter<NoteListAdapter.NoteLi
         return null == noteList ? 0 : noteList.size();
     }
 
-    // private Bitmap getVideoImage(String path, int width, int height, int kind) {
-    // Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(path, kind);
-    // bitmap = ThumbnailUtils.extractThumbnail(bitmap, width, height,
-    // ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
-    // return bitmap;
-    // }
-
     class NoteListViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitle, tvContent, tvTime;
-        // View itemView;
 
         public NoteListViewHolder(View itemView) {
             super(itemView);
-
-            // this.itemView = itemView;
-
             tvTitle = (TextView) itemView.findViewById(R.id.tvTitle);
             tvContent = (TextView) itemView.findViewById(R.id.tvContent);
             tvTime = (TextView) itemView.findViewById(R.id.tvTime);

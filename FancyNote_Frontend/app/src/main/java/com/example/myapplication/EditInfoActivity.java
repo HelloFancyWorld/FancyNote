@@ -1,5 +1,6 @@
 package com.example.myapplication;
 
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -49,14 +50,23 @@ public class EditInfoActivity extends AppCompatActivity {
         btnSave.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!isRequestInProgress) {
-                    isRequestInProgress = true;
-                    if (validateInputs()) {
-                        updateUserInformation();
-                    } else {
-                        isRequestInProgress = false;
-                    }
-                }
+                new android.app.AlertDialog.Builder(EditInfoActivity.this)
+                        .setTitle("确认修改")
+                        .setMessage("确定要修改信息吗？")
+                        .setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int which) {
+                                if (!isRequestInProgress) {
+                                    isRequestInProgress = true;
+                                    if (validateInputs()) {
+                                        updateUserInformation();
+                                    } else {
+                                        isRequestInProgress = false;
+                                    }
+                                }
+                            }
+                        })
+                        .setNegativeButton("取消", null)
+                        .show();
             }
         });
 
@@ -83,8 +93,8 @@ public class EditInfoActivity extends AppCompatActivity {
         String email = etEmail.getText().toString().trim();
         String motto = etMotto.getText().toString().trim();
 
-        if (TextUtils.isEmpty(nickname) || nickname.length() < 6 || nickname.length() > 10) {
-            etNickname.setError("用户名应为6到10个字符");
+        if (TextUtils.isEmpty(nickname) || nickname.length() < 1 || nickname.length() > 10) {
+            etNickname.setError("昵称应为1到10个字符");
             etNickname.requestFocus();
             return false;
         }
@@ -95,8 +105,8 @@ public class EditInfoActivity extends AppCompatActivity {
             return false;
         }
 
-        if (TextUtils.isEmpty(motto) || motto.length() < 5 || motto.length() > 30) {
-            etMotto.setError("签名应为5到30个字符");
+        if (TextUtils.isEmpty(motto) || motto.length() < 1 || motto.length() > 30) {
+            etMotto.setError("签名应为1到30个字符");
             etMotto.requestFocus();
             return false;
         }
@@ -136,6 +146,7 @@ public class EditInfoActivity extends AppCompatActivity {
                         etEmail.setText(email);
                         etMotto.setText(motto);
                         Toast.makeText(EditInfoActivity.this, "信息更新成功", Toast.LENGTH_SHORT).show();
+                        setResult(RESULT_OK);
                         finish(); // Close the activity
                     } else {
                         Toast.makeText(EditInfoActivity.this, updateInfoResponse.getMessage(), Toast.LENGTH_SHORT).show();

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User_note, Content, TextContent, ImageContent, AudioContent, User_folder
+from .models import User_note, Content, TextContent, ImageContent, AudioContent
 
 
 class TextContentSerializer(serializers.ModelSerializer):
@@ -68,7 +68,7 @@ class UserNoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User_note
-        fields = ['id', 'title', 'created_at', 'updated_at', 'contents']
+        fields = ['id', 'tag', 'title', 'created_at', 'updated_at', 'contents']
 
     def create(self, validated_data):
         contents_data = validated_data.pop('contents', [])
@@ -82,6 +82,7 @@ class UserNoteSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         contents_data = validated_data.pop('contents', None)
         instance.title = validated_data.get('title', instance.title)
+        instance.tag = validated_data.get('tag', instance.tag)
         instance.updated_at = validated_data.get(
             'updated_at', instance.updated_at)
         instance.save()
@@ -108,50 +109,5 @@ class UserNoteSerializer(serializers.ModelSerializer):
 
             # Delete any remaining contents that were not updated
             Content.objects.filter(id__in=existing_content_ids).delete()
-
-        return instance
-
-
-class UserFolderSerializer(serializers.ModelSerializer):
-    Usernotes = UserNoteSerializer(many=True, required=False)
-
-    class Meta:
-        model = User_folder
-        fields = ['id', 'title', 'created_at', 'updated_at', 'Usernotes']
-
-    def create(self, validated_data):
-        notes_data = validated_data.pop('Usernotes', [])
-        user_folder = User_folder.objects.create(**validated_data)
-
-        for note_data in notes_data:
-            UserNoteSerializer().create({**note_data, 'folder': user_folder})
-
-        return user_folder
-
-    def update(self, instance, validated_data):
-        notes_data = validated_data.pop('Usernotes', None)
-        instance.title = validated_data.get('title', instance.title)
-        instance.updated_at = validated_data.get(
-            'updated_at', instance.updated_at)
-        instance.save()
-
-        if notes_data is not None:
-            existing_note_ids = set(
-                instance.Usernotes.values_list('id', flat=True))
-
-            for note_data in notes_data:
-                note_id = note_data.get('id', None)
-
-                if note_id and note_id in existing_note_ids:
-                    note = User_note.objects.get(id=note_id, folder=instance)
-                    note_title = note_data['title']
-                    note_updated_at = note_data['updated_at']
-
-                    note.title = note_title
-                    note.updated_at = note_updated_at
-                    note.save()
-                else:
-                    UserNoteSerializer().create(
-                        {**note_data, 'folder': instance})
 
         return instance

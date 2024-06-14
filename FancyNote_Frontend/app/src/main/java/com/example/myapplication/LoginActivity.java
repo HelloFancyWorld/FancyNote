@@ -75,7 +75,7 @@ public class LoginActivity extends AppCompatActivity {
                     loginUser(updatedApiService);
                 } else {
                     isRequestInProgress = false;
-                    Toast.makeText(LoginActivity.this, "Failed to get CSRF token", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, "获取CSRF令牌失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -83,7 +83,7 @@ public class LoginActivity extends AppCompatActivity {
             public void onFailure(Call<CsrfTokenResponse> call, Throwable t) {
                 isRequestInProgress = false;
                 Log.d("Debug message", t.getMessage());
-                Toast.makeText(LoginActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -93,14 +93,14 @@ public class LoginActivity extends AppCompatActivity {
         String password = passwordEditText.getText().toString().trim();
 
         if (TextUtils.isEmpty(username)) {
-            usernameEditText.setError("Username required");
+            usernameEditText.setError("需要用户名");
             usernameEditText.requestFocus();
             isRequestInProgress = false;
             return;
         }
 
         if (TextUtils.isEmpty(password)) {
-            passwordEditText.setError("Password required");
+            passwordEditText.setError("需要密码");
             passwordEditText.requestFocus();
             isRequestInProgress = false;
             return;
@@ -119,7 +119,7 @@ public class LoginActivity extends AppCompatActivity {
                     saveCsrfTokenAndCookieToStorage(newCsrfToken, newCookie);
                     if (loginResponse.isSuccess()) {
                         sharedPreferences.edit().putBoolean("isLoggedIn", true).apply();    // 保存登录状态
-                        Toast.makeText(LoginActivity.this, "Login successful", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(LoginActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
 
                         // 传递用户信息到 MainActivity
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
@@ -136,14 +136,14 @@ public class LoginActivity extends AppCompatActivity {
                         Toast.makeText(LoginActivity.this, loginResponse.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(LoginActivity.this, "Login failed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(LoginActivity.this, "登录失败", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<LoginResponse> call, Throwable t) {
                 isRequestInProgress = false;
-                Toast.makeText(LoginActivity.this, "Network error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
