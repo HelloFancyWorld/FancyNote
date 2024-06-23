@@ -24,6 +24,8 @@ from api.models import User_info
 
 import logging
 
+from zhipuai import ZhipuAI
+
 logger = logging.getLogger(__name__)
 
 
@@ -224,3 +226,38 @@ class ContentUploadView(APIView):
             return Response({"success": False, "message": "Invalid content type"}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"success": True, "message": "Invalid content type", "new_file_url": new_url}, status=status.HTTP_200_OK)
+
+
+def Call_AI(request):
+    client = ZhipuAI(
+        api_key="08d40a42bf633a39ba2d5960b6c09058.2KKLZgNRjGPJeTen")
+
+    data = json.loads(request.body)
+    text = data.get('text')
+    question = text + \
+        "\n上面是我的笔记内容，请根据笔记的标题和具体内容，返回最合适的1-10个字作为笔记的标签。不要返回多余的符号、空格、换行符。只返回一个标签，越短越好，笔记的标签应该适合分类。"
+
+    try:
+        response = client.chat.completions.create(
+            model="glm-4",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": question
+                        }
+                    ]
+                }
+            ]
+        )
+        # 检查response是否有错误
+        if 'error' in response:
+            return JsonResponse({'error': response['error']}, status=500)
+        # 获取标签并返回
+        label = response.choices[0].message.content
+        return JsonResponse({'label': label})
+    except Exception as e:
+        # 处理可能的其他异常
+        return JsonResponse({'error': str(e)}, status=500)

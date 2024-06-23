@@ -1,0 +1,14 @@
+部署说明：
+需要修改后端的 settings.py 中的数据库为本地数据库，IP 地址为主机的 IP。
+运行后端：
+python manage.py makemigrations api
+>> python manage.py migrate
+>> python manage.py runserver 0.0.0.0:8000
+
+使用的外部库：
+前端：
+com.zhihu.matisse
+com.github.bumptech.glide
+后端：
+django框架，
+AI 调用了智谱 AI

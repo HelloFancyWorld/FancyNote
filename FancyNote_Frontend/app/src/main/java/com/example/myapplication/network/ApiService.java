@@ -43,6 +43,9 @@ public interface ApiService {
     @POST("/api/update_password/")
     Call<UpdatePWResponse> updatePassword(@Body UpdatePWRequest request);
 
+    @POST("/api/ai/")
+    Call<AIResponse> generateAITag(@Body AIRequest request);
+
     @POST("/api/notes/")
     Call<NoteResponse> createNote(@Body NoteRequest noteRequest);
 

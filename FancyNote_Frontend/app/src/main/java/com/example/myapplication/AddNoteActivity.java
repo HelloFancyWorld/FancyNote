@@ -32,8 +32,9 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -54,6 +55,8 @@ import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
 import com.bumptech.glide.Glide;
+import com.example.myapplication.network.AIRequest;
+import com.example.myapplication.network.AIResponse;
 import com.example.myapplication.network.ApiClient;
 import com.example.myapplication.network.ApiService;
 import com.example.myapplication.network.NoteRequest;
@@ -262,14 +265,36 @@ public class AddNoteActivity extends BaseActivity {
                 final EditText input = new EditText(this);
                 input.setFilters(new InputFilter[] { new InputFilter.LengthFilter(10) }); // 限制输入长度为10
 
-                // 创建一个FrameLayout来包装EditText
-                FrameLayout container = new FrameLayout(this);
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT
+                // 创建一个按钮
+                Button aiButton = new Button(this);
+                aiButton.setText("AI生成标签");
+
+                // 设置按钮的点击事件
+                aiButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // 调用AI生成标签的函数，并将生成的内容设置到EditText中
+                        input.setText("生成中");
+                        generateAITag(input);
+                    }
+                });
+                // 创建一个LinearLayout来包装EditText
+                LinearLayout container = new LinearLayout(this);
+                container.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
                 );
                 params.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
                 input.setLayoutParams(params);
+
+                // 设置Button的LayoutParams
+                LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                buttonParams.setMargins(marginInPx, marginInPx, marginInPx, marginInPx);
+                container.addView(aiButton, buttonParams);
                 container.addView(input);
                 // 创建并显示一个AlertDialog
                 new AlertDialog.Builder(this)
@@ -380,6 +405,52 @@ public class AddNoteActivity extends BaseActivity {
         } else {
             return "http://59.66.139.41:8000";
         }
+    }
+
+    private void generateAITag(EditText input) {
+        ViewGroup containerLayout = (ViewGroup) scrollView.getChildAt(0);
+        StringBuilder generateQuestion = new StringBuilder("笔记标题：" + ((EditText) containerLayout.getChildAt(0)).getText());
+        generateQuestion.append("\n笔记内容:\n");
+        int i = 1;
+        if(containerLayout.getChildAt(1) instanceof TextView && !(containerLayout.getChildAt(1) instanceof EditText)) {
+            i = 2;
+        }
+        for (; i < containerLayout.getChildCount(); i++) { //从1开始不计标题
+            View child = containerLayout.getChildAt(i);
+            if (child instanceof EditText) {
+                EditText editText = (EditText) child;
+                String text = editText.getText().toString().trim();
+                generateQuestion.append(text);
+                generateQuestion.append("\n");
+            }
+        }
+
+        String csrfToken = sharedPreferences.getString("csrf_token", null);
+        String cookie = sharedPreferences.getString("cookie", null);
+        ApiService apiService = ApiClient.updateCsrfTokenAndCookie(csrfToken, cookie).create(ApiService.class);
+
+        AIRequest aiRequest = new AIRequest(generateQuestion.toString());
+
+        Log.d("airequest", generateQuestion.toString());
+        apiService.generateAITag(aiRequest).enqueue(new Callback<AIResponse>() {
+            @Override
+            public void onResponse(@NonNull Call<AIResponse> call, @NonNull Response<AIResponse> response) {
+                if (response.isSuccessful()) {
+                    AIResponse aiResponse = response.body();
+                    input.setText(aiResponse.getLabel());
+                } else {
+                    Toast.makeText(AddNoteActivity.this, "获取失败", Toast.LENGTH_SHORT).show();
+                    input.setText("生成失败");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<AIResponse> call, Throwable t) {
+                // Hide loading dialog or UI indication
+                Toast.makeText(AddNoteActivity.this, "网络错误: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                input.setText("生成失败");
+            }
+        });
     }
 
     private void loadImageWithGlide(String relativeUrl, ImageView imageView) {
